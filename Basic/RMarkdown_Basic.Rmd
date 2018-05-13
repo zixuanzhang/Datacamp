@@ -1,16 +1,18 @@
 ---
 title: "R markdown basic"
-output: html_document
+output: 
+   html_document:
+     toc: true
 ---
 
-#### run R code in line
+## run R code in line
 ```{r}
 year <- 2018
 ```
 
 I will graduate in June `r year`.
 
-#### labeling and reuse code chunk
+## labeling and reuse code chunk
 ```{r simple_sum, results = 'hide'}
 2 + 2
 ```
@@ -18,9 +20,9 @@ I will graduate in June `r year`.
 ```{r ref.label='simple_sum', echo=FALSE}
 ```
 
-example:
+#### Example:
 
----------
+***
 ```{r message = FALSE, echo = FALSE}
 library(dplyr)
 library(ggvis)
@@ -37,4 +39,6 @@ The `ggvis` plot gives us a nice visualization of the `mtcars` data set:
 ```{r ref.label = 'chained',echo=FALSE}
 ```
 
-----------
+***
+
+Note: `ggvis` package can only produce image in html document. We have to use `ggplot2` package to include result image in pdf documents
