@@ -1,0 +1,40 @@
+---
+title: "R markdown basic"
+output: html_document
+---
+
+#### run R code in line
+```{r}
+year <- 2018
+```
+
+I will graduate in June `r year`.
+
+#### labeling and reuse code chunk
+```{r simple_sum, results = 'hide'}
+2 + 2
+```
+
+```{r ref.label='simple_sum', echo=FALSE}
+```
+
+example:
+
+---------
+```{r message = FALSE, echo = FALSE}
+library(dplyr)
+library(ggvis)
+```
+
+```{r chained, echo = FALSE, results = 'hide'}
+mtcars %>%
+  group_by(factor(cyl)) %>%
+  ggvis(~mpg, ~wt, fill = ~cyl) %>%
+  layer_points()
+```
+The `ggvis` plot gives us a nice visualization of the `mtcars` data set:
+
+```{r ref.label = 'chained',echo=FALSE}
+```
+
+----------

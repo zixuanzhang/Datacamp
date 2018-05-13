@@ -1,0 +1,125 @@
+---
+title: "ggvis cookbook"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library(ggvis)
+library(dplyr)
+mtcars
+```
+
+### scatterplots
+mtcars: plot  `wt`(x) against `mpg`(y) using scatterplot and add a smooth trend line; color indicate `cyl`.
+```{r}
+mtcars %>% ggvis(~wt, ~mpg, fill = ~cyl) %>% layer_points() %>% layer_smooths()
+```
+
+use more options in `layer_points`: 
+
+* `size` of dot, `shape` 
+* `stroke` as the color of a point
+* `fill := NA` means do not fill the dot point with color.
+
+```{r}
+mtcars %>% 
+  ggvis(~wt, ~mpg) %>%
+  layer_points(size := 30, shape := "diamond", stroke := "blue", fill := NA)
+```
+
+more options in add trend line  
+plot a regression line with 95% confidence in the model
+```{r}
+mtcars %>% 
+  ggvis(~wt, ~mpg) %>%
+  layer_points() %>%
+  layer_model_predictions(model = "lm", se = TRUE) # se allows prediction interval
+```
+
+### scatter plot with grouping
+coloring point by `cyl`  
+
+* first convert `cyl` to categorical variable using factor
+* fill the scatter plot by this factor
+
+```{r}
+mtcars %>%
+  ggvis(~wt, ~mpg) %>%
+  layer_points(fill = ~factor(cyl), size := 50)
+```
+
+
+* color points by `cyl` factors
+* add smooth trend line to each group of `cyl`: can only achieved after `group_by` by cyl
+```{r}
+mtcars %>%
+  ggvis(~wt, ~mpg, fill = ~factor(cyl)) %>%
+  layer_points() %>%
+  group_by(cyl) %>%
+  layer_model_predictions(model = "lm")
+```
+
+### bar graphs
+use pressure data frame
+```{r}
+head(pressure)
+```
+
+plot `temprature`(x) vs `pressure`(y) using bar graphs, both are continuous var
+```{r}
+pressure %>%
+  ggvis(~temperature, ~pressure) %>%
+  layer_bars(width = 10) # speicify the width of each bar
+```
+
+transform `temprature`(x) into factors, categorical variables and plot again
+```{r}
+# change the col of temp into a col of factor temprature
+pressure2 <- pressure %>% mutate(temperature = factor(temperature))
+head(pressure2)
+
+pressure2 %>% 
+  ggvis(~temperature, ~pressure) %>%
+  layer_bars()
+
+```
+
+### line graphs
+lines with points
+```{r}
+pressure %>% ggvis(~temperature, ~pressure) %>% layer_lines() %>% layer_points()
+```
+
+### histograms
+```{r}
+head(faithful)
+```
+
+basic histograms
+```{r}
+faithful %>% ggvis(~eruptions) %>% layer_histograms()
+```
+
+bin selection
+```{r}
+faithful %>% ggvis(~eruptions) %>% layer_histograms(width=0.5, fill := "#fff8dc", 
+                                                    boundary = 0)
+
+```
+
+
+By default, when the number of integer values is small, bins will be centered at integers and have a width of 1: 
+```{r}
+head(cocaine)
+cocaine %>% ggvis(~month, fill := "#fff8dc") %>%
+  layer_histograms() %>%
+  add_axis("x",title = "month") %>%
+  add_axis("y", title = "count")
+```
+
+
+### box plots
+```{r}
+mtcars %>% ggvis(~factor(cyl), ~mpg) %>% layer_boxplots()
+```
+
