@@ -1,0 +1,144 @@
+---
+title: "dplyr_join"
+output: html_document
+---
+
+* primary key: the variables that uniquely define each row; sometimes we need a combination of variables as the **key** to define each row.
+
+* secondary key: the variable that matches the primary key
+
+#### leftjoin 
+`left_join(x,y)`: join y to x
+
+example:  
+
+# Complete the code to join artists to bands: use a combination of first and last name
+
+bands2 <- left_join(bands,artists, by = c("first","last")) 
+
+#### right join:
+
+band3 <- right_join(artists, bands, by = c("first", "last"))
+
+# Check that bands3 is equal to bands2
+setequal(bands2, bands3)
+
+#### inner_join() and full_join()
+
+You can think of `inner_join` as the **most strict type** of join: they only retain observations that appear in **both** datasets.   
+In contrast, `full_join` are the most permissive type of join: they return all of the data that appears in both datasets (often resulting in many missing values). Full_join will help construct an intact database
+
+# Join albums to songs using inner_join()
+`inner_join(songs, albums, by = "album")` : album is the common variable
+
+# Join bands to artists using full_join()
+`full_join(artists, bands, by = c("first", "last"))`: first and last names are the common variables
+
+#### use pipe to achieve this
+
+bands %>% 
+     left_join(artists, by = c("first","last")) %>% 
+     filter(instrument == "Guitar") %>% 
+     select(first, last, band)
+
+#### semi_join()
+
+As you saw in the video, semi-joins provide a concise way to filter data from the first dataset based on information in a second dataset.
+
+`artists %>% semi_join(songs, by = c("first", "last"))`
+
+#### anti_join: 
+
+you can use an anti-join to see which rows will not be matched to a second dataset by a join.
+   
+# Check whether album names in labels are mis-entered
+
+`labels %>% anti_join(albums, by = "album")`: check if the labels are misentered like misspelling
+
+#### set(): used when the variables names are the same for two dataframes.
+
+1. count the total number use `union()`:  
+
+`aerosmith %>% union(greatest_hits) %>% nrow()`
+
+remark: union will remove duplicated rows
+
+2. The hits occur in both dataset: use `intersect()`
+
+`aerosmith %>% intersect(greatest_hits)`
+
+3. Find elements in one dataset but not in the others:
+
+`setdiff(x,y)`: select the dataset in x but not in y
+
+example:  
+
+Select the song names from live:
+
+`live_songs <- live %>% select(song)`
+
+Select the song names from greatest_hits
+
+`greatest_songs <- greatest_hits %>% select(song)`
+
+Create the new dataset using a set operation
+
+`live_songs %>% setdiff(greatest_songs)`
+     
+practice: select songs that unique to each data frame:  
+
+# Select songs from live and greatest_hits
+live_songs <- live %>% select(song)
+greatest_songs <- greatest_hits %>% select(song)
+
+
+# Return the songs that only exist in one dataset
+a <- setdiff(live_songs, greatest_songs)
+b <- setdiff(greatest_songs, live_songs)
+union(a,b)
+
+# Return songs in definitive that are not in complete  
+
+`definitive %>% anti_join(complete)`
+
+# Return songs in complete that are not in definitive  
+
+`complete %>% anti_join(definitive)`  
+
+# check if two datasets are the same:  
+
+* `identical(df1, df2)` will return true only if two datasets have the same contents and in the same order;
+* `setequal(df1, df2)` will return true if they have the same content. this method is usually prefered.
+
+---------------
+
+#### bind
+`bind_rows(df1, df2)`: bind df1 and df2 into a single dataset
+
+#### Examine discography and jimi
+discography
+jimi
+
+`jimi %>% bind_rows(.id = "album") %>% left_join(discography)`
+
+#### make data frame
+
+Make combined data frame using data_frame()  
+
+`data_frame(year = hank_year, song = hank_song, peak = hank_peak) %>% filter(peak == 1)`
+
+#### Convert the hank list into a data frame
+`as_data_frame(hank) %>% filter(peak == 1)` hank is a list of data frame，cannot bind a list of vector(eg. names of a data frame)
+
+instead we can use `bind_rows`:
+
+
+
+
+
+  
+
+
+
+
+

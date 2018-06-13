@@ -1,0 +1,200 @@
+---
+title: "SleepMammal_example"
+output: html_document
+---
+
+Sleep Mammal dataset: 
+
+* 11 variables
+* 83 observations in total
+
+The columns (in order) correspond to the following:
+
+|column name  |	Description  |
+--------------|--------------|
+name |	common name
+genus |	taxonomic rank
+vore |	carnivore, omnivore or herbivore?
+order |	taxonomic rank
+conservation |	the conservation status of the mammal
+sleep_total |	total amount of sleep, in hours
+sleep_rem |	rem sleep, in hours
+sleep_cycle |	length of sleep cycle, in hours
+awake |	amount of time spent awake, in hours
+brainwt |	brain weight in kilograms
+bodywt |	body weight in kilograms
+
+```{r warning=FALSE, message=FALSE}
+library(downloader)
+library(tidyverse)
+url <- "https://raw.githubusercontent.com/genomicsclass/dagdata/master/inst/extdata/msleep_ggplot2.csv"
+filename <- "msleep_ggplot2.csv"
+if (!file.exists(filename)) download(url,filename)
+msleep <- read.csv("msleep_ggplot2.csv")
+glimpse(msleep)
+msleep <- tbl_df(msleep) # change the format for R to display dataframe
+```
+
+functions to use:  
+
+* `download(url, filename)`: download the file and give it a file name
+* `file.exists(filename)`: returns a logical vector indicating whether the files named by its argument exist. or can use `!file.exists(filename)` for testing if a file does not exist.
+
+# select columns/rows using `select()` or `filter()`
+
+## select columns using `select()`
+
+select name and sleep_total column:  
+`select(dataframe, colname1, colname2...)`
+
+```{r}
+sleepdata <- select(msleep, name, sleep_total) 
+head(sleepdata)
+```
+
+use substraction to select cols except some columns:  
+`select(df, -colname)`
+
+```{r}
+head(select(msleep, -name))
+```
+
+
+select a range of columns by name":"  
+`select(df, name1:name2)`
+
+```{r}
+head(select(msleep, name:order))
+```
+
+select columns names all start with "sl":  
+`select(df, starts_with("character"))`
+
+```{r}
+head(select(msleep, starts_with("sl"))) # a faster way to gather sleep data
+```
+
+Some additional options to select columns based on a specific criteria include
+
+`ends_with()` = Select columns that end with a character string  
+`contains()` = Select columns that contain a character string  
+`matches()` = Select columns that match a regular expression  
+`one_of()` = Select columns names that are from a group of names(in a vector)    
+`everything()` = Select every columns
+
+# select rows using `filter()`
+filter rows of mammals that sleep a total of more than 16 hours.
+
+```{r}
+filter(msleep, sleep_total >= 16)
+```
+
+Filter the rows for mammals that sleep a total of more than 16 hours and have a body weight of greater than 1 kilogram.  
+
+```{r}
+filter(msleep, sleep_total >= 16, bodywt >= 1)
+```
+
+Filter the rows for mammals in the Perissodactyla and Primates taxonomic order:  
+`filter(df, colname %in% c("name1", "name2"))`: select rows where only contains name1 and name2 of colname; the same as using "or" logic.
+
+```{r}
+a <- filter(msleep, order %in% c("Perissodactyla", "Primates")) 
+b <- filter(msleep, order == "Perissodactyla"|order == "Primates") # do the same thing as above
+setequal(a,b)
+```
+
+
+# Pipe operator 
+This operator allows you to pipe the **output** from one function to the **input** of another function
+
+previously, we select name and sleep_total columns
+```{r}
+head(select(msleep, name, sleep_total))
+```
+
+we can do this by pipe operator as well
+
+```{r}
+msleep %>% select(name, sleep_total) %>% head()
+```
+
+
+# arrange or re-order rows using arrange()
+
+arrange the entire dataframe by the order of "order"(colname)  
+categorical variable: arranged by alphabetical order A-Z  
+numerical variable: arranged from low to high  
+we can use `desc()` to reverse the order from high to low or Z-A
+
+```{r}
+msleep %>% arrange(order) %>% head # in alphabetical order A-Z
+```
+
+we will select three columns from msleep, arrange the rows by the taxonomic order and then arrange the rows by sleep_total.
+
+```{r}
+msleep %>% select(name, order, sleep_total) %>% 
+  arrange(order, sleep_total) %>%  head() 
+# numerical values will be ordered from low to high
+```
+
+```{r}
+msleep %>% select(name, order, sleep_total) %>% 
+  arrange(order, desc(sleep_total)) %>%  
+  filter(sleep_total >= 16)
+```
+
+# create new columns using `mutate()`
+The mutate() function will add new columns to the data frame.  
+Create a new column called **rem_proportion** which is the ratio of rem sleep to total amount of sleep.
+
+```{r}
+msleep <- msleep %>% mutate(rem_proportion = sleep_rem / sleep_total)
+head(msleep)
+```
+
+Here we add a second column called **bodywt_grams** which is the bodywt column in grams.
+
+```{r}
+msleep <- msleep %>% mutate(bodywt_grams = bodywt * 1000)
+head(msleep)
+```
+
+# create summaries of data frame using `summarise()`
+
+The `summarise()` function will create summary statistics(a new table) for **a given column** in the data frame such as finding the mean. For example, to compute the average number of hours of sleep, apply the mean() function to the column sleep_total and call the summary value avg_sleep.
+
+```{r}
+msleep %>% summarise(avg_sleep = mean(sleep_total))
+```
+
+other commonly used functions
+
+```{r}
+a <- msleep %>% summarise(avg_sleep = mean(sleep_total),
+                     min_sleep = min(sleep_total),
+                     max_sleep = max(sleep_total),
+                     sd_sleep = sd(sleep_total),
+                     med_sleep = median(sleep_total),
+                     sum_sleep = sum(sleep_total),
+                     first_sleep = first(sleep_total),
+                     last_sleep = last(sleep_total),
+                     distinct_order = n_distinct(order),
+                     total = n())
+```
+
+# Group operation + summarise
+## Split - apply - combine 
+
+* split the msleep data frame by the taxonomic order;  
+* summarize the max, min, and avg of total sleep time for each order;  
+* combine these data together
+```{r}
+msleep %>% group_by(order) %>% 
+  summarise(avg_sleep = mean(sleep_total),
+            max_sleep = max(sleep_total),
+            min_sleep = min(sleep_total),
+            total = n()) # how many samples from each order
+```
+
