@@ -67,11 +67,141 @@ x <- c(0,1,2,3,4,NA)
 mean(x, na.rm = TRUE) # ignore NA values
 sd(x,na.rm = TRUE)
 
-# create sequences
+## create sequences
 1:5
 seq(1,5, by =2) # a sequence from 1 to 5 with increment 2
 seq(0,20,length.out=5) # specify a length of the output (same as increment)
 seq(0,2,length.out = 5)
 rep(1, times = 5) # create a series of repeated values
 
-# comparing vectors
+## comparing vectors
+a <- 3
+a == pi # test for equality
+a != pi # test for inequality
+a > pi
+a < pi
+a <= pi
+a <= pi
+
+# comparision element by element wise
+v <- c(3,pi,4)
+w <- rep(pi, 3)
+v == w # element wise comparison
+
+# see if any of the comparison is true or whether all comparisons were true
+any(v == pi) # return true if any element is true
+all(v == 0) # return true if all elements are true
+
+## select vector elements
+fib <- c(0,1,1,2,3,5,8,13,21,34)
+fib[1] # the first index is 1 not 0
+fib[1:3]
+fib[c(1,2,4,8)]
+fib[-1] # ignore the first value and return all the rest
+fib[-(1:3)] # ignore the first three values
+
+fib < 10 # return boolean values
+fib[fib<10] # use boolean vector to select elements less than 10
+fib %% 2 == 0 # even number
+fib[fib %% 2 == 0]
+
+v[v > median(v)] # select element greater than median
+v[(v<quantile(v,0.05)) | (v>quantile(v,0.95))] #lower and upper 5% 
+v[abs(v-mean(v)) > 2*sd(v)] # elements exceed +2/-2 sd from the mean
+v[!is.na(v) & !is.null(v)] # neither NA nor null(undefined value)
+
+## define a function
+
+# write a function to calculate coefficient of variation
+cv <- function(x) sd(x)/mean(x) # x is parameter(s)
+cv(1:10)
+lapply(lst,cv) # can use it anywhere in another function
+
+# compute the greatest common divisor of two integers
+gcd <- function(a,b) {
+  if (b == 0) return(a)
+  else return(gcd(b, a %% b))
+}
+
+help(Control)
+
+## for loop
+for (i in 1:5) print(1:i)
+
+for (n in c(2,5,10,20,50)) {
+  x <- rnorm(n)
+  cat(n,":",sum(x^2), "\n", sep="")
+}
+
+f <- factor(sample(letters[1:5], 10, replace = TRUE))
+for (i in unique(f)) print(i)
+
+
+#######indexing into data structure####
+## indexing use vector
+v <- c(1,4,4,3,2,2,3)
+
+# Create a sample data frame
+data <- read.table(header=T, text='
+                   subject sex size
+                   1   M    7
+                   2   F    6
+                   3   F    9
+                   4   M   11
+                   ')
+data[1,3]
+data[1,"size"]
+data[1:2,]
+data[1:2,2]
+data[1:2,c("size","sex")]
+data[1:2,2:3]
+
+##indexing using boolean vector
+v>2
+v[v>2]
+
+data$subject<3
+data[data$subject<3,]
+which(data$subject<3)
+
+##negative indexing means droping terms
+v
+v[-1] # drop the first term
+v[-1:-3] # drop the first three terms
+v[-length(v)] # drop the last term
+
+
+########subset of data structure#######
+v <- c(1,4,4,3,2,2,3)
+
+subset(v,v<3)
+v[v<3] #same result
+
+t <- c("small", "small", "large", "medium")
+subset(t, t!="small") # remove "small"
+
+v[v<3] <- 9
+v
+subset(v,v<3) <- 9 # cannot assign values to a subset
+
+data
+subset(data,subject<3)
+subset(data,subject<3, select = -subject)
+subset(data,subject<3, select = c(sex,size))
+subset(data,subject<3, select = sex:size)
+
+subset(data, subject<3 & sex == "M") # AND
+subset(data, subject<3 | sex == "M") # OR
+
+subset(data, log2(size)>3) # based on transformed data
+
+subset(data, subject %in% c(1,3)) # subset if element in another vector
+
+######### make vector filled with values ###########
+rep(1,50)
+rep(F,20)
+rep(1:5,4)
+rep(factor(LETTERS[1:3]),5)
+
+####### information about variables#####
+
