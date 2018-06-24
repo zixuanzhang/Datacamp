@@ -204,4 +204,54 @@ rep(1:5,4)
 rep(factor(LETTERS[1:3]),5)
 
 ####### information about variables#####
+x <- 6
+n <- 1:4
+let <- LETTERS[1:4]
+df <- data.frame(n,let)
 
+ls() # list of all current variable
+exists("x") # see of "x" exist as a variable
+exists("y")
+rm(x)
+exists("x")
+
+# get information about the structure
+str(n)
+str(df)
+length(n)
+dim(df)
+
+########work with NA,Null, NaN########
+x <- NULL # null means there is no value
+x > 5
+y <- NA
+y > 5
+z <- NaN
+z > 5
+
+# to test whether a vairable has these three values
+is.null(x)
+is.na(y)
+is.nan(z)
+
+is.null(y)
+is.na(x) # there is no value to be checked
+
+# ignore bad values 
+vy <- c(1, 2, 3, NA, 5)
+mean(vy) # return NA because mean() is very sensitive 
+mean(vy, na.rm = TRUE) # remove 
+
+vz <- c(1, 2, 3, NaN, 5)
+sum(vz) # sum cannot tolerate NaN
+sum(vz, na.rm = TRUE)
+
+vx <- c(1, 2, 3, NULL, 5)
+sum(vx) # null is not a problem because it does not exist
+length(vx)
+
+# remove bad values from vectors
+vy
+vy[!is.na(vy)]
+vz
+vz[!is.nan(vz)]
