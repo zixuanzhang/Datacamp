@@ -182,7 +182,7 @@ str(pop_list)
 pop_a <- read_excel("urbanpop_nonames.xlsx", sheet = 1, col_names = FALSE)
 
 # Import the the first Excel sheet of urbanpop_nonames.xlsx (specify col_names): pop_b
-cols <- c("country", paste0("year_", 1960:1966))
+cols <- c("country", paste0("year_", 1960:1966)) # recycle use of "year_"
 pop_b <- read_excel("urbanpop_nonames.xlsx", sheet = 1, col_names = cols)
 
 # Print the summary of pop_a
