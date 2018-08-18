@@ -245,6 +245,7 @@ att5 <- att4[-c(1,2),]
 names(att5)
 
 # Remove all periods in state column
+library(stringr)
 att5$state <- str_replace_all(att5$state, "\\.", "")
 
 # Remove white space around state names
@@ -255,11 +256,12 @@ head(att5)
 
 # Change columns to numeric using dplyr (don't change)
 library(dplyr)
-example <- mutate_each(att5, funs(as.numeric), -state)
+str(att5)
+example <- mutate_each(att5, funs(as.numeric), -state) # apply to cols
 
 # Define vector containing numerical columns: cols
 cols <- c(2:5)
 
 # Use sapply to coerce cols to numeric
-att5[, cols] <- sapply(att5[,cols], as.numeric)
-
+att5[, cols] <- sapply(att5[,cols], as.numeric) # sapply is a wrapper for lapply
+str(att5)
