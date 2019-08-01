@@ -1,0 +1,125 @@
+---
+title: "tidy_missing"
+author: "Eleanor Zhang"
+output:
+  html_document: 
+    theme: lumen
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+
+Load packaged at need.
+```{r}
+library(tidyverse)
+library(naniar) # deal with missing value
+```
+
+# Search and replace missing values
+
+Missing data are not always coded as NA! The objective here is to:  
+*   Look for hidden missing values
+*   Replace missing values with NA
+*   Check assumptions on missingness
+
+Some possible incorrectly coded missing values: "missing", "Not Available", "N/A"... These need to be recoded into "NA".
+
+Let's create a chaotic case
+```{r}
+bad.df <- tibble(score = c(3, -99, 4, -99, 7, 10, 12, 16, 9),
+            grade = c("N/A", "E", "missing", "na", "n/a", "NULL", ".", "NULL", "N/a"),
+            place = c(-99, 97, 95, 92, -98, "missing", 88, ".", 86))
+```
+
+## search for missing values
+
+Seach for specific entry and it returns number of occurence in each variable
+```{r}
+bad.df %>% miss_scan_count(search = list("N/A"))
+
+# it can take multiple entries to search
+bad.df %>% miss_scan_count(search = list("N/A", "N/a"))
+```
+
+## Replace targeted entries with NA
+```{r}
+# replace specific entries in grade with NA
+bad.df %>% replace_with_na(replace = list(grade = c("N/A", "N/a")))
+```
+
+To reduce code repetition and provide other options to replace with NA using scope of variants:  
+
+*    `replace_with_na_all()`: all variables
+*    `replace_with_na_at()`: a subset of variables
+*    `replace_with_na_if()`: replace a subset of variables that satisfied some condition
+
+Replace all entries of -99 with NA
+```{r}
+bad.df %>% replace_with_na_all(condition = ~.x == -99)
+```
+
+Replace some entries with NA
+```{r}
+bad.df %>% replace_with_na_all(condition = ~.x %in% c("N/A", "missing", "na"))
+```
+
+Replace in a subset of variables
+```{r}
+replace_with_na_at(bad.df, 
+                   .vars = c("score", "grade"),
+                   ~.x %in% c("N/A", "missing", "na"))
+```
+
+Replace NA in variables that are characters
+```{r}
+replace_with_na_if(bad.df, 
+                   .predicate = is.character,
+                   ~.x %in% c("N/A", "missing", "na"))
+```
+
+# Implicit missing values
+
+These values are implictly missing without explicitly listed.
+
+First contruct a case: values recorded in the morning, afternoon and evening. By construction, Sam miss score in evening (it's not there...)
+```{r}
+set.seed(1)
+df2 <- tibble(name = c(rep("robin", 3), rep("sam", 3), rep("blair",3)),
+              time = rep(c("morning", "afternoon", "evening"), 3),
+              value = sample(100:1000, 9)) %>% slice(-6)
+df2
+```
+
+To reveal this missingness, we can spread the dataframe
+```{r}
+spread(df2, key = time, value = value)
+```
+
+To summarize, there are two types of missing values:  
+
+*   Explicitly: missing with NA
+*   Implicitly: Not shown in the data, but implied
+
+Use `complete()` from tidyr package to make implicit missings explicit:
+```{r}
+df2.complete <- df2 %>% tidyr::complete(name, time) # a combination of variables
+```
+
+Sometimes a readable tabular is not easy to deal with in silico:
+```{r}
+df.readable <- df2.complete %>% mutate(name = ifelse(duplicated(name), NA, name))
+df.readable
+```
+
+In this case, we can fill down the column by `fill()` from tidyr. This situation is called "lost information carried forward" (LOCF).
+```{r}
+df.readable %>% fill(name)
+```
+
+Remark: These techniques need to be handled very carefully because it only solves problems in some restricted situation.
+
+

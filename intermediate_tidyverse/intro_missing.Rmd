@@ -3,7 +3,7 @@ title: "Introducton to missing values"
 author: Eleanor Zhang
 output:
   html_document: 
-    theme: readable
+    theme: lumen
     toc: true
     toc_float: true
     number_sections: true
@@ -225,4 +225,5 @@ gg_miss_span(msleep, sleep_rem, span_every = 10)
 gg_miss_span(msleep, sleep_rem, span_every = 10, facet = vore)
 ```
 
-# Search and replace missing values
+
+
