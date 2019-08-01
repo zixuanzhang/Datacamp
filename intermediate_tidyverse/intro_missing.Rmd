@@ -3,7 +3,7 @@ title: "Introducton to missing values"
 author: Eleanor Zhang
 output:
   html_document: 
-    theme: flatly
+    theme: readable
     toc: true
     toc_float: true
     number_sections: true
@@ -185,3 +185,44 @@ msleep %>%
 Read result: In carnivores, 3 rows or say cases are complete.
 
 # Visualize missing values
+
+Naniar provides a bunch of missing visualization functions in which each corresponds to a missingness summary introduced above. 
+
+We could obtain a quick overview of missings in a dataset by `vis_miss()`: This function generate a heatmap of missingness, providing amount of missing in each variable and the location of missingness. We can also sort amount of missingness among variables by `sort_miss = TRUE`. 
+```{r}
+vis_miss(msleep) 
+```
+
+This function can also visualize missings in cluster if specified. It rearrange the rows to place common missings adajenct in a cluster.
+```{r}
+vis_miss(msleep, cluster = TRUE) 
+```
+
+Look at missings in variables and cases/rows. This two functions is equivalent to visualize the `miss_var_summary()` and `miss_case_summary()` output with ordering from high to low. The ordering can be turned off as following.
+```{r}
+gg_miss_var(msleep) 
+gg_miss_case(msleep, order_cases = FALSE) # rows are not rearranged
+```
+
+Look at missings in variables and cases/rows between groups. The example shows missings of each variable in each "vore" group. The dominant missing values in carnivores and herbivores are sleep cycle.
+```{r}
+gg_miss_var(msleep, facet = vore) # vore has missings itself
+```
+
+look at the missingness of variables that co-occur in cases. For example, the leftmost vertical column says 10 cases have missings in both weight and sleep cylce.
+```{r}
+gg_miss_upset(msleep)
+```
+
+Compare missingness of each variable between different groups. This function also generate a heatmap. The colors of the legend dictate amount of missingness of given variable in the group defined on x axis. For example, over 60% of sleep cycle record is missing in carnivores.
+```{r}
+gg_miss_fct(msleep, fct = vore)
+```
+
+Visualize spans of missingness, which is analog to `miss_var_span()`. This function also support faceting. Here we plot the spans (every 10 rows) of missings in rem sleep hours and facet by "vore".
+```{r}
+gg_miss_span(msleep, sleep_rem, span_every = 10)
+gg_miss_span(msleep, sleep_rem, span_every = 10, facet = vore)
+```
+
+# Search and replace missing values
