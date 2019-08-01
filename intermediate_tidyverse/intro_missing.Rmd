@@ -1,0 +1,187 @@
+---
+title: "Introducton to missing values"
+author: Eleanor Zhang
+output:
+  html_document: 
+    theme: flatly
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+Claim: all materials are summarized based on Datacamp Learning Track of "Intermediate Tidyverse Toolbox".
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+
+Load packaged at need.
+```{r}
+library(tidyverse)
+library(naniar) # deal with missing value
+```
+
+# Check missing values
+
+Define missing values:  From human perspective, it means the the value should have been recorded but not. In R language, missing values can be coded as "NA", "NaN".
+
+Create a vector containing NA (Not Available)
+```{r}
+x <- c(1, NA, 3, NA, NA, 5)
+```
+
+Check if there is any NA present
+```{r}
+anyNA(x) # return true or false
+```
+
+Check any NA at each position
+```{r}
+is.na(x) # return a logical vector 
+```
+
+Count number of missing values
+```{r}
+# use base r
+sum(is.na(x)) # logical vector can be added up
+
+# use naniar package
+n_miss(x)
+prop_miss(x) 
+```
+
+"NaN": not a number, R interpret this as missing value
+```{r}
+anyNA(NaN)
+sqrt(-1) # example of how NaN is created
+```
+
+"NULL": an empty value, but not missing (think about an empty bottle is not "missing" water)
+```{r}
+anyNA(NULL)
+```
+
+"Inf": infinite value, not missing
+```{r}
+anyNA(Inf)
+10/0 # example of Inf
+```
+
+__Conditional statement__: ???
+```{r}
+NA | TRUE 
+NA | FALSE 
+```
+
+# Behaviors of missing values
+
+Calculation behavior with NA:
+```{r}
+sum(x)
+
+# these two are different
+NA + NaN 
+NaN + NA 
+```
+
+# Summary of missingness
+
+For a new dataset, we need to check if there any any missing values and how many there are. Take `msleep` dataset from ggplot2 package as a demo. It is taken from a study aiming to expand understanding about mammalian sleep. More information about the variables can be found using `?msleep`.
+
+```{r}
+data("msleep")
+str(msleep)
+```
+
+## Basics
+
+```{r}
+# count total number of missing values
+n_miss(msleep)
+
+# count total number of complete values
+n_complete(msleep)
+
+# count number of missing value on each variable
+map_df(msleep, prop_miss)
+map_df(msleep, prop_complete)
+```
+
+## Sumarize missing values in detail
+
+Basic summaries using `n_miss()` and `n_complete()`, but need more detailed summaries of missingness, which works smoothly with `group_by` in dplyr package.
+
+### `miss_var_summary()`: 
+
+return number of and percent of missing values in each variable
+```{r}
+miss_var_summary(msleep)  
+```
+
+### `miss_case_summary()`: 
+
+return number of and percent of missing values in each row; case is the row index; here only show the first 6 rows
+```{r}
+miss_case_summary(msleep) %>% arrange(case) %>% head()
+```
+
+### `miss_var_table()`: 
+
+column wise summary
+```{r}
+miss_var_table(msleep)
+```
+
+Read result: there are 6 variables (54.5% out of total variables) without any missing values, 1 variable with 7 missing values, etc.
+
+### `miss_case_table()`: 
+
+row-wise summary
+```{r}
+miss_case_table(msleep)
+```
+
+Read result: there are 20 rows (24.1% of total rows) that are complete.
+
+## Find missingness pattern
+
+### `miss_var_span()`: 
+
+Calculate number and percentage of missing values in repeating span, useful to detect repeated missing pattern. This is usually useful for time dependent variable and time series data, such as monthly or weekly. 
+```{r}
+miss_var_span(msleep,
+              var = vore, # for this variable
+              span_every = 20) # per 20 rows
+```
+
+Read result: span_counter = 1 refers to the first 20 rows of data; there is 1 value missing in the first 20 rows and 19 values are complete in variable "vore".
+
+### `miss_var_run()`
+
+Thi is "runs" of missing data for column wise. This is useful to detect missingness pattern for a given variable:
+```{r}
+miss_var_run(msleep, sleep_rem) %>% head() # result of first 6 rows
+```
+
+Read result: The first value of sleep_rem is missing, the next 6 values are complete ... 
+
+## Summaries with `group_by`
+
+These summary functions can work easily with dplyr package. For example, `group_by()` allows summary of missingness within specified grouping variable:
+```{r}
+msleep %>% 
+  group_by(vore) %>% # carnivore, omnivore or herbivore
+  miss_var_table()
+```
+
+Read result: This tabular summarizes missingness pattern in the group of carnivore, omnivore or herbivore respectively. For example, carnivores has 6 variables that are complete.
+
+Same with row-wise summary:
+```{r}
+msleep %>% 
+  group_by(vore) %>% # carnivore, omnivore or herbivore
+  miss_case_table()
+```
+Read result: In carnivores, 3 rows or say cases are complete.
+
+# Visualize missing values
