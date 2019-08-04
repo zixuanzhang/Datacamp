@@ -173,7 +173,7 @@ __Remark__: Whether such missingness is random or not is not testable based obse
 
 # Visualize missing pattern
 
-Try out some rearrangement of the dataset and visualize the missingness can be a good starting point of looking for missing randomly or not, although this is not the definitive technique to use. Here we use the `msleep` dataset from ggplot2 package.
+Try out some rearrangement of the dataset and visualize the missingness can be a good starting point of looking for missing randomly or not, although this is not the definitive technique to use. More systematic tools to detect missing dependency will be introduced in another [section]. Here we use the `msleep` dataset from ggplot2 package.
 
 ```{r}
 head(msleep)
