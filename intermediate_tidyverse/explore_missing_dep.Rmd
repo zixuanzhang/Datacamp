@@ -7,11 +7,81 @@ output:
     toc: true
     toc_float: true
     number_sections: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+load packages
+```{r}
+library(tidyverse)
+library(naniar)
+```
+
+## Shadow matrix and nabular data
+
+Create a dataset of census data with two variables: income and education
+```{r}
+census <- tibble(income = c(48, 40, 52, 31, 89, 103),
+                 education = c(NA, NA, "high_school", NA, "university", "university"))
+census
+```
+
+Education has missings. If we plot the distribution of income and facet by missings and complete observations:
+```{r}
+library(patchwork)
+census.p1 <- census %>% ggplot(aes(x = income)) + geom_density() + xlim(0,150)
+census.p2 <- census %>% 
+  mutate(education_NA = as.factor(ifelse(is.na(education), "NA", "complete"))) %>% 
+  ggplot(aes(x = income, fill = education_NA)) + geom_density() + xlim(0,150)
+
+census.p1 + census.p2
+```
+
+It can be easily seen that people with missingcrecord in education have lower income as it is shown on the faceting plot. There are tools which assist finding such structures. First of all, we could create a shadow matrix.
+
+Shadown matrix has   
+
+*    coordinated names: same name as varaible name with a suffix "_NA"; eg. education_NA
+*    clear values: coded as "NA" or "!NA" (not NA) instead of using 1 or 0
+
+Create nabular data that aligns by column to the original dataset.
+
+## Example 
+
+Select a few variables from `msleep` dataset
+```{r}
+msleep.df <- msleep %>% select(vore, sleep_rem, sleep_total)
+msleep.df
+```
+
+A shadow matrix explicitly list out if the value is missing or not for each observation in each column:
+```{r}
+as_shadow(msleep.df)
+```
+
+Create nabular data which combines shadow matrix and original dataset. The last three columns are called shadow matrix.
+```{r}
+bind_shadow(msleep.df)
+
+# bind only the variables with missings
+bind_shadow(msleep.df, only_miss = TRUE) # "sleep total" has no missings
+```
+
+Summarize over missings and non-missings using `group_by()`. For example, we want to find out if the average sleep total is the same between known "vore" and unknown "vores". In the output, we observe that the mean total sleep time of missings and non-missings in "vore" variable; (there is no missings in sleep time variable). Additional summary statistics can also be computed.
+```{r}
+msleep.df %>% 
+  bind_shadow() %>% 
+  group_by(vore_NA) %>% 
+  summarize(sleep.total.mean = mean(sleep_total), # mean 
+            sleep.total.sd = sd(sleep_total), # sd
+            n_obs = n()) # number of missings in vores
+```
+
+# Visualize missings with ggplot
+
+
 
