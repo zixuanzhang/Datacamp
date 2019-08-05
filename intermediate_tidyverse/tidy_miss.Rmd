@@ -1,6 +1,6 @@
 ---
-title: "tidy missing data"
-author: "Eleanor Zhang"
+title: "Tidy missing data"
+author: Materials from Datacamp summarized by Eleanor Zhang
 output:
   html_document: 
     theme: lumen
@@ -21,7 +21,7 @@ library(naniar) # deal with missing value
 
 # Search and replace missing values
 
-Missing data are not always coded as NA! The objective here is to:  
+Missing data are not always coded as NA! The objective in the section is to:  
 
 *   Look for hidden missing values
 *   Replace missing values with NA
@@ -38,7 +38,7 @@ bad.df <- tibble(score = c(3, -99, 4, -99, 7, 10, 12, 16, 9),
 
 ## search for missing values
 
-Seach for specific entry and it returns number of occurence in each variable
+Search for specific entry and calculate number of occurence in each variable
 ```{r}
 bad.df %>% miss_scan_count(search = list("N/A"))
 
@@ -46,9 +46,10 @@ bad.df %>% miss_scan_count(search = list("N/A"))
 bad.df %>% miss_scan_count(search = list("N/A", "N/a"))
 ```
 
-## Replace targeted entries with NA
+## replace targeted entries with NA
+
+Examole: replace "N/A" and "N/a" in grade with NA
 ```{r}
-# replace specific entries in grade with NA
 bad.df %>% replace_with_na(replace = list(grade = c("N/A", "N/a")))
 ```
 
@@ -58,24 +59,24 @@ To reduce code repetition and provide other options to replace with NA using sco
 *    `replace_with_na_at()`: a subset of variables
 *    `replace_with_na_if()`: replace a subset of variables that satisfied some condition
 
-Replace all entries of -99 with NA
+EX: Replace all entries of -99 with NA
 ```{r}
 bad.df %>% replace_with_na_all(condition = ~.x == -99)
 ```
 
-Replace some entries with NA
+EX: Replace a list of values with NA
 ```{r}
 bad.df %>% replace_with_na_all(condition = ~.x %in% c("N/A", "missing", "na"))
 ```
 
-Replace in a subset of variables
+EX: Replace a list of values in a subset of variables
 ```{r}
 replace_with_na_at(bad.df, 
                    .vars = c("score", "grade"),
                    ~.x %in% c("N/A", "missing", "na"))
 ```
 
-Replace NA in variables that are characters
+EX: Replace with NA in variables that are characters
 ```{r}
 replace_with_na_if(bad.df, 
                    .predicate = is.character,
@@ -86,7 +87,7 @@ replace_with_na_if(bad.df,
 
 These values are implictly missing without explicitly listed.
 
-First contruct a case: values recorded in the morning, afternoon and evening. By construction, Sam miss score in evening (it's not there...)
+First contruct a case: Robin, Sam and Blair has values recorded in the morning, afternoon and evening. By construction, Sam miss score in evening (it's not there...)
 ```{r}
 set.seed(1)
 bad.df2 <- tibble(name = c(rep("robin", 3), rep("sam", 3), rep("blair",3)),
@@ -126,11 +127,12 @@ In this case, we can fill down the column by `fill()` from tidyr. This situation
 df.readable %>% fill(name)
 ```
 
-We can execute fill() and complete() in one pipeline
+We can finish `fill()` and `complete()` in one pipeline. Suppose we have a dataframe like this: it has both implicit and explicit missings.
 ```{r}
 df.readable2 <- bad.df2 %>% mutate(name = ifelse(duplicated(name), NA, name))
 df.readable2
 
+# fill explicitly missings and complete implicit missings
 df.readable2 %>% fill(name) %>% complete(name, time)
 ```
 
@@ -139,7 +141,7 @@ __Remark__: These techniques need to be handled very carefully because it only s
 
 # Missing data dependence
 
-When facing missing data, we have to carefully decide either impute the missings or simply delete them.There are three types of missingness generally and first two are easily confusing:
+When facing missing data, we have to carefully decide either impute the missings or delete them.There are three types of missingness generally and first two are easily confusing:
 
 *   MCAR: missing completely at random
 *   MAR: missing at random
@@ -147,7 +149,7 @@ When facing missing data, we have to carefully decide either impute the missings
 
 ## missing completely at random (MCAR)
 
-The missings are unrelated to any observed or unobserved data. It means the missings is a random subset of all observations. Statistically, it means the imaginery distribution of missings in a given variable is similar to those observed ones. 
+The missings are unrelated to any observed or unobserved data. It means the missings is a random subset of all observations. Statistically, the imaginery distribution of missings in a given variable is similar to those observed ones. 
 
 If this is true, then we should:  
 
@@ -156,7 +158,7 @@ If this is true, then we should:
 
 ## missing at random (MAR)
 
-MAR is a weaker assumption than MCAR. This is a conditional randomness, meaning the missings can be related to observed data but are not allowed to relate to unobserved data. The missings can be explained by some observed covariates. For example, suppose we have measured blood pressure for patients. Within males or females (conditional on sex), the distribution of missing blood pressure are similar to those observed ones. 
+MAR is a weaker assumption than MCAR. The missings can be related to observed data but are not allowed to relate to unobserved data. The missings can be fully explained by some observed covariates. For example, suppose we have measured blood pressure for patients. Within males or females (conditional on sex), the distribution of missing blood pressure are similar to those observed ones. So this can be called "conditional randomness."
 
 If this is true, we should:  
 
@@ -200,4 +202,4 @@ Summary:
 
 *    If the missing is MCAR: None of the variable observed/unobserved will explain the missingness.
 *    If missing is MAR: some observed variable can explain missingness, meaning you will see cluster of missingness if you arrange the entire dataset by those variables.
-*    If missing is MNAR: you will see a bisection of dataset by certain variables.
+*    If missing is MNAR: you will see a bisection of dataset by certain variables in above plot.

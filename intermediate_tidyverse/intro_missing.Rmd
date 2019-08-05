@@ -1,6 +1,6 @@
 ---
 title: "Introducton to missing values"
-author: Eleanor Zhang
+author: Materials from Datacamp summarized by Eleanor Zhang
 output:
   html_document: 
     theme: lumen

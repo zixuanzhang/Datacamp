@@ -1,8 +1,12 @@
 ---
 title: "Explore missing data dependency"
-author: "Eleanor Zhang"
-date: "8/3/2019"
-output: html_document
+author: Materials from Datacamp summarized by Eleanor Zhang
+output:
+  html_document: 
+    theme: lumen
+    toc: true
+    toc_float: true
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
