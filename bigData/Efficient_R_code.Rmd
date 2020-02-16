@@ -3,6 +3,8 @@ title: "EfficientRcode"
 author: "Eleanor Zhang"
 date: "2/14/2020"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -10,4 +12,382 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Introduction
+
+```{r}
+version
+```
+
+Read .rds files (r binary files) are much faster than reading other format files such as csv.
+
+compare "<-" and "=": use "<-" inside a function call will overwrite the existing variable name;
+```{r}
+system.time(int <- 1:5)
+int
+```
+
+Ex: use microbenchmark to compare reading csv file and rds file
+```{r}
+# Load the microbenchmark package
+library(microbenchmark)
+
+# Compare the two functions
+compare <- microbenchmark(read.csv("movies.csv"), 
+                          readRDS("movies.rds"), 
+                          times = 10) # number of times of calling
+
+# Print compare
+compare
+```
+
+get ram and cpu
+```{r}
+library(benchmarkme)
+get_ram() # 8GB
+get_cpu() # 4 cores
+```
+
+Never grow your vector! Instead, use pre-allocation, use a vectorized solution wherver possible
+data frame is a collection of column vectors (each column must contain a single data type, but rows can be different); a row of a df is also a df; for matrix, all data must be of single data type;
+
+note: use matrix whenever appropriete (matrix operation is faster than df)
+
+## code profiling
+
+```{r}
+library(tidyverse)
+library(profvis)
+iris
+
+# Profile the following code with the profvis function
+profvis({
+  # Load and select data
+  max_sepal <- iris[max(iris$Sepal.Length), ]
+
+  # Plot data of interest
+    plot(iris$Petal.Length, iris$Sepal.Length)
+
+  # Loess regression line
+  model <- loess(Sepal.Length ~ Petal.Length, data = iris)
+  j <- order(iris$Petal.Length)
+  
+  # Add fitted line to the plot
+  lines(iris$Petal.Length[j], model$fitted[j], col = "red")})
+     ## Remember the closing brackets!
+```
+
+Switch df to matrix will speed up the code operation: 6 dices rolls
+```{r}
+# The previous data frame solution is defined
+# d() Simulates 6 dices rolls
+d <- function() {
+  data.frame(
+    d1 = sample(1:6, 3, replace = TRUE),
+    d2 = sample(1:6, 3, replace = TRUE)
+  )
+}
+
+# Complete the matrix solution
+m <- function() {
+  matrix(sample(1:6, 6, replace = TRUE), ncol=2)
+}
+
+# Use microbenchmark to time m() and d()
+microbenchmark(
+ data.frame_solution = d(),
+ matrix_solution     = m()
+)
+```
+
+Replace & with && : && will evalute the next condition when the first one is true
+```{r}
+# Example data
+is_double <- c(TRUE, FALSE, FALSE)
+
+# Define the previous solution
+move <- function(is_double) {
+    if (is_double[1] & is_double[2] & is_double[3]) {
+        current <- 11 # Go To Jail
+    }
+}
+
+# Define the improved solution
+improved_move <- function(is_double) {
+    if (is_double[1] && is_double[2] && is_double[3]) {
+        current <- 11 # Go To Jail
+    }
+}
+
+# microbenchmark both solutions
+# Very occassionally the improved solution is actually a little slower
+# This is just random chance
+microbenchmark(move(is_double), improved_move(is_double), times = 1e5)
+```
+
+## Parallel computing
+
+R by default only use one core of CPU
+
+Detect # of cores on the machine
+```{r}
+# Load the parallel package
+library(parallel)
+
+# Store the number of cores in the object no_of_cores
+no_of_cores <- detectCores()
+
+# Print no_of_cores
+no_of_cores
+```
+
+parallel computing: whether you can run the loop either backward or forward; eg. independent monte carlo simulations are perfect for parallel computing
+
+replace apply with parApply
+```{r}
+# Determine the number of available cores
+detectCores()
+
+# Create a cluster via makeCluster
+cl <- makeCluster(2)
+
+# Parallelize this code
+apply(iris[, 1:4], 2, median)
+parApply(cl, iris[, 1:4], 2, median) # to each column
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+use parSapply for running multiple simulations; 
+note: we need to export our self defined function to the cluster
+```{r}
+# Create a cluster via makeCluster (2 cores)
+cl <- makeCluster(2)
+
+# Export the play() function to the cluster
+clusterExport(cl, "play")
+
+# Re-write sapply as parSapply
+res <- sapply(1:100, function(i) play())
+system.time(res <- parSapply(cl, 1:100, function(i) play()))
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+## apply function family
+
+```{r}
+data(mtcars)
+mtcars # a dataframe
+```
+
+### lapply: on list objects
+
+take mean of each object in the list --> return a list with the same length 
+```{r}
+l <- list(a <- 1:10, b <- 11:20) # create a list
+l
+lapply(l, mean) # a list
+```
+
+### sapply: wrapper for lapply but return a vector
+
+```{r}
+sapply(l, mean) # a vector
+```
+
+### tapply: apply to a column by group variables
+
+calculate average mpg in each type of cyl
+```{r}
+tapply(mtcars$mpg, mtcars$cyl,mean)
+```
+
+## parallel computing
+
+split by task or by data:
+by data --> execute the same task on different data (trajectory)
+
+find the most frequent words
+```{r}
+library(janeaustenr)
+
+# Vector of words from all six books
+words <- janeausten_words()
+head(words) 
+str(words)
+
+# Most frequent "a"-word that is at least 5 chars long
+max_frequency(letter = "a", words = words, min_length = 5)
+```
+
+partition by data: find the most frequent words with each initial letter with minimim word length of 5
+```{r}
+# Vector of words from all six books
+words <- janeausten_words()
+
+# Most frequent "a"-word that is at least 5 chars long
+max_frequency(letter = "a", words = words, min_length = 5)
+
+# Partitioning
+result <- lapply(letters, max_frequency,
+                 # other arguments in the max_frequency function
+                words = words, min_length = 5) %>% unlist()
+result
+# Barplot of result
+barplot(result, las = 2)
+```
+
+replace for loop with sapply
+```{r}
+# define a function to compute the mean for rnorm() random numbers
+mean_of_rnorm <- function(n) {
+  random_numbers <- rnorm(n)
+  mean(random_numbers)
+}
+
+n_numbers_per_replicate <- 1e5
+n_replicates <- 1000
+
+# Repeat n_numbers_per_replicate, n_replicates times
+n <- rep(n_numbers_per_replicate, n_replicates)
+
+# Call mean_of_rnorm() repeatedly using sapply()
+system.time(result <- sapply(
+  # The vectorized argument to pass
+  n, 
+  # The function to call
+  mean_of_rnorm
+))
+
+# View the results
+hist(result)
+
+# try with parallel computing
+# Create a cluster via makeCluster (2 cores)
+cl <- makeCluster(2)
+
+# Export the play() function to the cluster
+clusterExport(cl, "mean_of_rnorm")
+
+# Re-write sapply as parSapply: much faster
+system.time(res <- parSapply(cl, n, function(i) mean_of_rnorm(i)))
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+Example: generate rnorm() random number
+```{r}
+ncores <- detectCores(logical = FALSE) # detect physical cores; usually # logical > # physical
+n <- ncores:1
+
+# Use lapply to call rnorm for each n,
+# setting mean to 10 and sd to 2 
+lapply(n, rnorm, mean = 10, sd = 2)
+
+# use parallel computing for above task
+# Create a cluster
+cl <- makeCluster(ncores)
+
+# Use clusterApply to call rnorm for each n in parallel,
+# again setting mean to 10 and sd to 2 
+clusterApply(cl, n, rnorm, mean = 10, sd = 2)
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+Ex: partial sum in parallel
+```{r}
+cl <- makeCluster(ncores)
+
+# Evaluate partial sums in parallel
+part_sums <- clusterApply(cl, x = c(1, 51), fun = function(x) sum(x:(x + 49)))
+# Total sum
+total <- sum(unlist(part_sums))
+
+# Check for correctness
+total == sum(1:100)
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+Ex: generate rnorm and take the mean
+```{r}
+# Create a cluster and set parameters
+cl <- makeCluster(2)
+n_replicates <- 50
+n_numbers_per_replicate <- 1e4
+
+# Parallel evaluation on n_numbers_per_replicate, n_replicates times
+means <- clusterApply(cl, 
+             x = rep(n_numbers_per_replicate, n_replicates), 
+             fun = mean_of_rnorm) # return a list
+                
+# View results as histogram
+hist(unlist(means))
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+## Parallel package
+
+### cluster object
+
+```{r}
+# Make a cluster with 4 nodes
+cl <- makeCluster(2) # cluster object
+
+# Investigate the structure of cl
+str(cl)
+
+# What is the process ID of the workers?
+clusterCall(cl, Sys.getpid) # apply function on each node
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+type of communication: socket, fork, mpi
+socket: start with an empty environment (no global variables defined on master can be detected on each node), master sending out message and task to each node (worker)
+fork: each worker is a copy of master process (less communication needed); each node has access to global object under backends, but will not recieve updated from master process after cluster is created
+
+```{r}
+# A global variable and is defined
+a_global_var <- "before"
+
+# Create a fork cluster with 2 nodes
+cl_fork <- makeCluster(2, type = "FORK") # don't have fork on this computer
+
+# Change the global var to "after"
+a_global_var <- "after"
+
+# Evaluate the print fun on each node again
+clusterCall(cl_fork, print(a_global_var))
+
+# Stop the cluster
+stopCluster(cl_fork)
+```
+
+### core of parallel package
+
+core functions:
+1) clusterApply
+2) clusterApplyLB: load balanced
+
+wrapper functions for above:
+3) parApply, parLapply, parSapply (for Apply, lapply, sapply)
+4) row and column parallel operation: parRapply, parCapply
+
+clusterApply
+```{r}
+clusterApply(cl, 
+             X, # each element is the first argument of function(); length = #tasks sent to workers
+             function()
+            )
+```
+remark: we want to minimize sending messages from master to workers (takes time)
 
