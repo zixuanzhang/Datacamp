@@ -1,0 +1,181 @@
+---
+title: "Chapter2_names&values"
+author: "Eleanor Zhang"
+date: "2/21/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(easypackages) # to load multiple packages
+libraries("tidyverse", "pryr", "lobstr")
+```
+
+## Names vs. values
+
+Tips:  
+1) try to avoid extra copies
+
+```{r}
+df <- data.frame(runif(3), runif(3))
+names(df) <- c(1, 2)
+df
+df$`3` <- df$`1` + df$`2`
+```
+
+Memory used
+```{r}
+x <- runif(1e6)
+y <- list(x, x, x)
+
+object_size(x)
+object_size(y) # used up the same memory as a single x
+```
+
+When a is copied
+```{r}
+a <- c(1, 5, 3, 2)
+b <- a
+b[[1]] <- 10 # a is copied here
+```
+
+## 2.2 Binding
+
+x and y share the same location/address; this address changes when you restart R
+```{r}
+x <- c(1, 2, 3)
+y <- x
+
+obj_addr(x)
+#> [1] "0x1cde3d8"
+obj_addr(y)
+#> [1] "0x1cde3d8"
+```
+
+## copy and modify behavior
+
+R objects are unchangeable
+
+```{r}
+x <- c(1, 2, 3)
+cat(tracemem(x), "\n") # start tracing address change
+
+y <- x
+y[[3]] <- 4L
+
+y[[3]] <- 5L
+
+untracemem(x) # stop tracing
+```
+
+pointers in function calls
+```{r}
+f <- function(a) {
+  a
+}
+
+x <- c(1, 2, 3)
+cat(tracemem(x), "\n")
+#> <0x8f5c7f8>
+
+z <- f(x)
+# there's no copy here!
+
+untracemem(x)
+```
+
+list: each element in the list point to a name; so it stores both values and their references as well. It also use copy and modify, but it is a shallow copy, meaning only the list object and its bindings (names) are copied, not the values (compared to vectors, where values/contents are copied as well)
+
+Dataframe: list of vectors (can be very messy..)
+
+Character vectors: put elements in a global string pool
+
+compare these two ??? why different from result output
+```{r}
+x <- c(1L, 2L, 3L)
+tracemem(x)
+
+x[[3]] <- 4
+untracemem(x) 
+
+#------
+x <- c(1, 2, 3)
+cat(tracemem(x), "\n")
+y <- x
+y[[3]] <- 4L
+y[[3]] <- 5L
+
+untracemem(x)
+```
+
+## Object size
+
+```{r}
+x <- runif(1e6)
+obj_size(x)
+#> 8,000,048 B
+
+y <- list(x, x, x)
+obj_size(y)
+object_size(y)
+#> 8,000,128 B
+```
+
+if there is shared values between objects, then the object size of combining them will not be equal to the sum of individual
+
+alternative representation
+```{r}
+obj_size(1:3)
+#> 680 B
+obj_size(1:1e3)
+#> 680 B
+obj_size(1:1e6)
+#> 680 B
+obj_size(1:1e9)
+#> 680 B
+```
+
+## 2.5 modify in place
+
+an object has single name bound to it; name = object
+```{r}
+v <- c(1, 2, 3)
+cat(tracemem(x), "\n")
+
+v[[3]] <- 4 # no copy
+untracemem(x)
+```
+
+Example: for loop
+
+```{r}
+x <- data.frame(matrix(runif(5 * 1e4), ncol = 5))
+cat(tracemem(x), "\n")
+medians <- vapply(x, median, numeric(1))
+
+for (i in seq_along(medians)) {
+  x[[i]] <- x[[i]] - medians[[i]]
+}
+
+untracemem(x)
+```
+
+we can modify this by using list
+```{r}
+y <- as.list(x)
+cat(tracemem(y), "\n")
+#> <0x7f80c5c3de20>
+  
+for (i in 1:5) {
+  y[[i]] <- y[[i]] - medians[[i]]
+}
+#> tracemem[0x7f80c5c3de20 -> 0x7f80c48de210]: 
+```
+
+Environments: always modified in place
+```{r}
+
+```
+

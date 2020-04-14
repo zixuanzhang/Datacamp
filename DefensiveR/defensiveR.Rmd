@@ -1,0 +1,133 @@
+---
+title: "Denfensive R"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Conflict
+
+check for new versions of installed packages
+```{r}
+old <- old.packages()
+update.packages(ask = F)
+```
+
+### Packages and namespace
+
+packages use namespaces as spaces for names
+```{r}
+library(dplyr) # give direct access to exported functions in dplyr
+# over 200 
+getNamespaceExports("dplyr")
+```
+
+Gives the order R will look for the function you called
+```{r}
+search()
+library("conflicted") # make function choice explicitly
+filter # search this function
+
+# Prefer the dplyr version of the lag function
+conflict_prefer("lag", "dplyr")
+```
+
+## Early warning
+
+Type TRUE and FALSE instead of T or F, because TRUE is protected but T can be overwritten
+use isTRUE() to test if a conditin is true
+```{r}
+isTRUE(T)
+isTRUE(2)
+```
+
+### message()
+get message(): helpful information about the progress but can be noisy
+helpful if running long process
+```{r}
+noisy <- function(a, b) {
+  message("I'm doing stuff")
+  a + b
+}
+noisy(3, 5) # noisy way
+suppressMessages(noisy(3,5)) # mute message
+
+suppressPackageStartupMessages(library("tidyverse")) # mute messages when loading package
+```
+
+write simulation function
+```{r}
+# Wrap the code below in a function get_distribution()
+# Modify the function to make it less noisy
+get_distribution <- function(N, verbose = TRUE) {
+  results <- numeric(N)
+  for(i in 1:N) {
+    results[i] <- simulate()
+    # Check if verbose is TRUE
+    if(isTRUE(verbose)) {
+      # Show a progress report
+      message("Simulation ", i, " completed")
+    }
+  }
+  return(results)
+}
+```
+
+
+### warning
+
+R will continue working although warning() telling you something is wrong
+```{r}
+# Create new variable 
+x <- c(1, 1, 1)
+y <- 1:3
+
+# Correlation coefficient of x & y
+cor(x, y)
+suppressWarnings(cor(x, y))
+```
+
+### stop()
+
+stop the program and print error message 
+```{r}
+stop("print the error message here")
+```
+
+Example
+```{r}
+mean_age = function(ages) {
+  if(any(ages < 0)) {
+    stop("You have negative ages!")
+  }
+  # Stop the execution if any of the ages are over 150
+  if(any(ages > 150)) {
+    stop("that's impossible!")
+  }
+  m = mean(ages)
+  return(m)
+}
+```
+
+
+```{r}
+results <- try("Scotland"+"world cup", silent = TRUE)
+class(results)
+
+if(class(results) == "try-error") {
+  # do something
+}
+```
+
+### dot (full stop)
+
+try to avoid naming object with "." variable name, because 
+```{r}
+summary(lm_result)  # S3 object
+summary.lm(lm_result) # this is what really happend in the backend for S3 object
+```
+

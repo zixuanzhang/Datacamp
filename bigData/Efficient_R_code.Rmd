@@ -9,6 +9,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 
 ## Introduction
@@ -390,4 +391,49 @@ clusterApply(cl,
             )
 ```
 remark: we want to minimize sending messages from master to workers (takes time)
+
+EX: mean of rnorm()
+```{r}
+mean_of_rnorm_in_parallel <- function(n_numbers_per_replicate, n_replicates){
+        n <- rep(n_numbers_per_replicate, n_replicates)
+        clusterApply(cl, n, mean_of_rnorm) 
+       }
+
+# Call it to try it
+mean_of_rnorm_in_parallel(1000, 5)
+```
+
+EX: benchmark task size
+```{r}
+# Rerun the microbenchmark: compare this two task
+microbenchmark(
+  mean_of_rnorm_sequentially(n_numbers_per_replicate, n_replicates), 
+  mean_of_rnorm_in_parallel(n_numbers_per_replicate, n_replicates),
+  times = 1, 
+  unit = "s"
+)
+```
+
+remark: when independent task were large and communication overhead is low, we obtain a large speed-up.
+
+### initialize the node
+
+```{r}
+cl <- makeCluster(2)
+
+# load tidyverse package on each node: 2 ways
+clusterCall(cl, function() library("tidyverse"))
+clusterEvalQ(cl, {library("tidyverse")})
+```
+
+Export function or object from global environment
+```{r}
+clusterExport(cl, " ")
+```
+
+### pass data as argument
+
+```{r}
+
+```
 

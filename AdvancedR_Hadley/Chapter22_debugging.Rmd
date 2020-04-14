@@ -1,0 +1,44 @@
+---
+title: "Chapter22_Debugging"
+author: "Eleanor Zhang"
+date: "2/21/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(easypackages) # to load multiple packages
+libraries("tidyverse", "pryr")
+```
+
+## R Markdown
+
+Example
+```{r}
+f <- function(a) g(a)
+g <- function(b) h(b)
+h <- function(c) i(c)
+i <- function(d) {
+  if (!is.numeric(d)) {
+    stop("`d` must be numeric", call. = FALSE)
+  }
+  d + 10
+}
+
+f("a")
+```
+
+
+read traceback(): from bottom up
+
+```{r}
+j <- function() k()
+k <- function() stop("Oops!", call. = FALSE)
+f(j())
+
+# only display the key error message
+rlang::with_abort(f(j()))
+```
+

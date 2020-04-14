@@ -1,0 +1,60 @@
+---
+title: "R_performance"
+author: "Eleanor Zhang"
+date: "2/20/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pryr)
+library(profvis)
+```
+
+## object size
+
+Every length 0 vector occupies 40 bytes of memory:
+
+look at object size of numerical values
+```{r}
+sizes <- sapply(0:50, function(n) object_size(seq_len(n)))
+plot(0:50, sizes, xlab = "Length", ylab = "Size (bytes)", 
+  type = "s")
+```
+
+object size of functions without arguments
+```{r}
+object_size(numeric())
+```
+
+```{r}
+mem_used()
+```
+
+## interactive profiling code
+
+display memory usage on each line
+```{r}
+profvis({
+  data(diamonds, package = "ggplot2")
+
+  plot(price ~ carat, data = diamonds)
+  m <- lm(price ~ carat, data = diamonds)
+  abline(m, col = "red")
+})
+```
+
+use list instead of data frame can save up memory: will not make a copy and move it to a new place
+```{r}
+x <- data.frame(matrix(runif(100 * 1e4), ncol = 100))
+medians <- vapply(x, median, numeric(1))
+y <- as.list(x)
+
+for(i in 1:5) {
+  y[[i]] <- y[[i]] - medians[i]
+  print(c(address(y), refs(y)))
+}
+```
+
