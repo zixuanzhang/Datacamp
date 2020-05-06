@@ -529,3 +529,5 @@ two type of sequence files:
 - fasta
 
 both store DNA or protein sequence
+
+test on this file
