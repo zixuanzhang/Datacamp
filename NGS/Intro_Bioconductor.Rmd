@@ -1,0 +1,531 @@
+---
+title: "Introduction to Bioconductor"
+author: "Eleanor Zhang"
+date: "4/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(BSgenome)
+library(Biostrings)
+library(GenomicRanges)
+```
+
+## Update R
+
+remove the old version from command line:
+rm -rf /Applications/R.app
+sudo rm -rf /Library/Frameworks/R.framework
+sudo rm /usr/local/bin/{R,Rscript}
+
+
+## Intall package and check versions
+
+3.10 can work with R version 3.6.0
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.10") # version 3.10 use biomanager
+```
+
+install BSgenome package
+```{r}
+BiocManager::install("BSgenome")
+
+# check package version
+library(BSgenome)
+packageVersion("BSgenome") # 1.54
+```
+
+## S4 class
+
+S4 is actively used in Bioconductor packages
+compared to S3, which use a generic function. R will interpret this function by its input;
+S4: require formal definition of class (eg. data); a class describe name, slots(methods/fields), and contains (inheritance definition)
+
+check if an object is S4 
+```{r}
+isS4()
+str()
+```
+
+show class of an object, eg. BSgenome; a_genome
+```{r}
+showClass("BSgenome") # give accesors list
+.S4methods(class = "BSgenome")
+
+class(a_genome) # main class
+is(a_genome) # other classes
+isS4(a_genome) # is it an S4 representation
+
+# Investigate some other accesors
+organism(a_genome)
+provider(a_genome)
+seqinfo(a_genome)
+```
+Extends = parent class, Known Subclasses = classes that inherent from it
+
+Genome dataset in BSgenome package; these are biostrings-based genome data package
+```{r}
+# see all availbale genome sequences
+available.genomes()
+
+# install yeast genome
+if (interactive()) {
+    if (!require("BiocManager"))
+        install.packages("BiocManager")
+    BiocManager::install("BSgenome.Scerevisiae.UCSC.sacCer3")
+}
+```
+
+load Yeast genome
+```{r}
+library("BSgenome.Scerevisiae.UCSC.sacCer3")
+yeast <- BSgenome.Scerevisiae.UCSC.sacCer3
+str(yeast)
+
+# chromosome number 
+length(yeast)
+# Chromosome names
+seqnames(yeast) 
+# length of each chromosome by DNA pairs
+seqlengths(yeast)
+```
+
+S4 method for BSgenome object
+```{r}
+# select chromosome of interest and particular region; eg. first 10 base pairs
+getSeq(yeast, "chrM")
+# select first 10 base of each chromosome in the genome; default start = 1
+getSeq(yeast, end = 10) 
+# Print chromosome M, alias chrM
+yeast$chrM
+# Count characters of the chrM sequence
+nchar(yeast$chrM)
+```
+
+## Biostring package
+
+pros: memory efficient to store and manipulate sequence of characters; containers can be inherited
+
+```{r}
+DNA_BASES # DNA 4 bases
+RNA_BASES # RNA 4 bases
+AA_STANDARD # Amino acids
+
+DNA_ALPHABET # IUPAC code map (including symbols)
+RNA_ALPHABET # IUPAC code map
+AA_ALPHABET # IUPAC amino acid code
+```
+
+### transcription and translation
+
+transcribe DNA to RNA
+```{r}
+dna_seq <- DNAString("ATGATCTCGTAA")
+RNAString(dna_seq) 
+```
+
+translate RNA to AA
+```{r}
+RNA_GENETIC_CODE
+translate(RNAString(dna_seq))
+
+# shortcut DNA --> AA
+translate(dna_seq) # same result as above
+```
+
+### check alphabet
+```{r}
+library(Biostrings)
+yeast_chrI <- getSeq(yeast, "chrI")
+
+# check alphabet
+alphabet(yeast_chrI)
+
+# Check the alphabet Frequency 
+alphabetFrequency(yeast_chrI)
+
+# Check alphabet of the zikaVirus using baseOnly = TRUE
+alphabet(yeast_chrI, baseOnly = TRUE) # alphabet of bases (we can know if it's DNA string or RNA string)
+
+# check container class 
+str(yeast_chrI) # DNAString
+```
+
+subset a sequence using subseq()
+```{r}
+# Unlist the set, select the first 21 letters, and assign to dna_seq
+dna_seq <- subseq(unlist(yeast_chrI), end = 21)
+dna_seq
+```
+
+## Sequencing handling
+
+single sequence vs. a set of sequence
+each XString store a single sequence 
+1. BString for string
+2. DNAString for DNA
+3. RNAString for RNA
+4. AAString for amino acids
+
+sets of sequence (with varying lengths)
+1. BStringSet for string
+2. DNAStringSet for DNA
+3. RNAStringSet for RNA
+4. AAStringSet for amino acids
+
+### create stringSet and collate it
+
+```{r}
+# read a DNA seq string 
+readDNAStringSet("data/zika.fa") # only one seq
+
+length(yeast_chrI) # take a DNA sequence from yeast whole genome; length = #base pairs
+
+# use unlist to collate a sequence if length = 1 and width = # base length
+unlist()
+```
+
+### create a set of subset of stringSet
+
+three subsets from a single sequence
+```{r}
+yeast_set <- DNAStringSet(yeast_chrI,
+                          start = c(1, 101, 201),
+                          end = c(100, 200, 300))
+yeast_set # each seq is stored in the column
+length(yeast_set) # 3 sequence = # cols
+width(yeast_set) # 3 equal length sequence 
+```
+
+### complement sequence
+
+```{r}
+a_seq <- DNAString("ATGATCTCGTAA")
+a_seq
+complement(a_seq)
+```
+
+rev() a sequence will reverse the sequence order (useful when building a reference genome)
+```{r}
+yeast_set # 1 2 3
+rev(yeast_set) # 3 2 1
+```
+
+reverse() a sequence: reverse from right to left and reverse the order of sequences
+```{r}
+reverse(yeast_set)
+```
+
+reverse complement (for both DNA and RNA seq)
+```{r}
+RNAString(dna_seq) 
+
+# faster and more memory efficient
+reverseComplement(RNAString(dna_seq))
+
+# equivalent to Using two functions together
+reverse(complement(RNAString(dna_seq)))
+```
+
+## Pattern matching
+
+these two function are similar but differ in output
+```{r}
+# match one string to another string
+matchPattern(pattern = "", subject = , max.mismatch = )
+
+# match one set of strings to one string, or the other way around
+vmatchPattern() # output matching result for each seq in the set
+```
+
+### palendromes
+example: palendromes (read forward and backward are the same)
+```{r}
+findPalindromes() # find palendromes in single seq (only work for single seq)
+```
+
+translation has 6 reading frames 
+3 positive 3 negative
+
+### find and count matched pattern
+
+find matched pattern of NS5 conserved region in 6 possible reading frame
+```{r}
+# print the rnaframesZikaSet (6 possible reading frame of zika RNA)
+rnaframesZikaSet
+
+# translate all 6 reading frames 
+AAzika6F <- translate(rnaframesZikaSet)
+AAzika6F
+
+# Count the matches allowing 15 mistmatches
+index <- vcountPattern(pattern = NS5, subject = AAzika6F, max.mismatch = 15)
+
+# Select the frame that contains the match
+selectedSet <- AAzika6F[index]  # c(0,0,1,0,0,0)
+
+#Convert this frame into a single sequence
+selectedSeq <- unlist(selectedSet)
+```
+
+explore how this sequence is matched with the pattern
+```{r}
+matchPattern(pattern = "", subject = , max.mismatch = )
+```
+
+## IRanges package and genomics structure
+
+Hierarchical data structures that can contain metadata
+```{r}
+library(IRanges)
+```
+
+IRanges can be specified by numeric (exact positions) or logical vector (you can fill in conditions)
+
+Different ways to specify ranges; width = end-start+1
+```{r}
+# A range is defined by start and end (position)
+myIRanges <- IRanges(start = 20, end = 30)
+
+# two ranges with start and width
+myIRanges_width <- IRanges(start = c(1, 20), width = c(30, 11))
+
+# recyling use of argument
+myIRanges_end <- IRanges(start = c(1, 20), end = 30)
+
+# use logical vector (3rd and 4th position)
+IRanges(start = c(FALSE, FALSE, TRUE, TRUE))
+```
+
+Use Rle to specify Run length enconding
+- compute and store lengths and values of a vector/factor
+- S4 container; used to save long repetitive vectors efficiently
+```{r}
+some_numbers <- c(3, 2, 2, 2, 3, 3, 4, 2)
+some_numbers
+
+Rle(some_numbers)
+
+# logical
+gi <- c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+myRle <- Rle(gi)
+IRanges(start = myRle)
+```
+
+More examples
+```{r}
+# start vector 1 through 5, end 100 
+IRnum1 <- IRanges(start = 1:5, end = 100)
+
+# end 100 and width 89 and 10
+IRnum2 <- IRanges(end = 100, width = c(89,10))
+
+# logical argument start = Rle(c(F, T, T, T, F, T, T, T))
+IRlog1 <- IRanges(start = Rle(c(F, T, T, T, F, T, T, T)))
+
+# Printing objects in a list
+print(list(IRnum1 = IRnum1, IRnum2 = IRnum2, IRlog1 = IRlog1))
+```
+
+look at width
+```{r}
+# Create the first sequence seq_1
+seq_1 <- IRanges(start = 10, end = 37)
+
+# Create the second sequence seq_2
+seq_2 <- IRanges(start = c(5, 35, 50),
+                 end = c(12, 39, 61),
+                 names = LETTERS[1:3])
+
+# Check the width of seq_1 and seq_2
+width(seq_1) # 28
+width(seq_2) 
+
+# Check the width of seq_1 and seq_2
+lengths(seq_1) # 28
+lengths(seq_2)
+```
+
+## Genomics Ranges
+
+```{r}
+library(GenomicRanges)
+```
+
+specify genomics intervals by chromosome: chromosome number and range on that chr
+```{r}
+myGR <- GRanges("chr1:200-300")
+myGR # provide metadata such as seqnames and seqinfo
+```
+
+transform df to GRranges
+```{r}
+myGR <- as(df, "GRanges")
+```
+
+Look at accessors of GRanges S4 object
+each accessor is both a setter and a getter?
+```{r}
+methods(class = "GRanges") # to check available accessors
+# used for chromosome names 
+seqnames(gr)
+# returns an IRanges object for ranges
+ranges(gr)
+# stores metadata columns
+mcols(gr)
+# generic function to store sequence information
+seqinfo(gr)
+# stores the genome name
+genome(gr)
+```
+
+### explore chrX
+
+```{r}
+BiocManager::install("TxDb.Hsapiens.UCSC.hg38.knownGene")
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+hg <- TxDb.Hsapiens.UCSC.hg38.knownGene
+str(hg) # class of TxDb
+```
+
+select genes from chrX, this returns a GRanges object
+```{r}
+hg_chrXg <- genes(hg, filter = list(tx_chrom = c("chrX")))
+hg_chrXg
+```
+
+transform df to GRanges object
+```{r}
+library(GenomicRanges)
+# Create myGR
+myGR <- as(seq_intervals, "GRanges")
+```
+
+Extract genes with filtering conditions
+```{r}
+# extract all genes on chrX
+hg_chrXg <- genes(hg, filter = list(tx_chrom = c("chrX")))
+
+# Extract all positive stranded genes in chromosome X, assign to hg_chrXgp, then sort it
+hg_chrXgp <- genes(hg, filter = list(tx_chrom = c("chrX"), tx_strand = "+"))
+```
+
+### GRangesList
+a container storing a collection of GRanges efficiently
+
+create a GRangesList
+```{r}
+as(mylist, "GRangesList")
+unlist(myGRangesList) # convert back
+
+# accessors of GRangesList
+methods(class = "GRangesList")
+```
+
+use it to break regions into smaller regions
+```{r}
+hg_chrXg # 1067 known genes
+slidingWindows(hg_chrXg, 
+               width = 20000, # total # letters for each new range
+               step = 10000) # distance btw ranges, eg [1, 20000], [10000, 30000]
+# this returns a GRangesList (each gene has been divided into pieces with 20000 bp)
+```
+
+### Genomics features and TxDb (transcript database)
+
+```{r}
+library(GenomicFeatures) # use TxDb objects to store metadata
+```
+
+extract info from TxDb objects, use these extracting functions
+- transcripts()
+- exons
+- genes
+- cds()
+- promoters()
+```{r}
+# prefilter results to ChrX (only this chromosome is active)
+seqlevels(hg) <- c("chrX")
+
+# transcripts
+transcripts(hg, columns = c("tx_id", "tx_name"), filter = NULL)
+
+# exons
+exons(hg, columns = c("tx_id", "exon_id"), filter = list(tx_id = "179161"))
+
+# retrieve exons by transcripts 
+exonsBytx <- exonsBy(hg, by = "tx")  #  exons by transcript
+
+# retrieve by transcript id
+abcd1_219480 <- exonsBytx[["219480"]]  #  transcript id
+
+# width of each exon
+width(abcd1_219480) 
+```
+
+find Overlaps (either complete or partial)
+```{r}
+# countOverlaps results in an integer vector of counts
+countOverlaps(query, subject) 
+
+# findOverlaps results in a Hits object
+findOverlaps(query, subject) 
+
+# subsetByOverlaps returns a GRangesList object
+subsetByOverlaps(query, subject)
+```
+
+find if ABCD1 gene has overlap with chrX, ABCD1 is a GRanges object
+```{r}
+overlapsAny(ABCD1, hg_chrX)
+```
+
+find where gene id and its location at overlap with ABCD1
+```{r}
+# Store the overlapping range in rangefound
+rangefound <- subsetByOverlaps(hg_chrX, ABCD1)
+
+# Check names of rangefound
+names(rangefound)
+
+# Check the gene of interest 
+ABCD1
+
+# Check rangefound
+rangefound
+```
+
+Find # of transcript each gene has
+```{r}
+# Prefilter chromosome X "chrX" using seqlevels()
+seqlevels(hg) <- c("chrX")
+
+# Get all transcripts by gene and print it
+hg_chrXt <- transcriptsBy(hg, by = "gene")
+hg_chrXt
+
+# Select gene `215` from the transcripts
+hg_chrXt$`215`
+```
+
+convert GRangesList object into Granges object
+after conversion, length of GRanges object >= GRangeList
+```{r}
+# Unlist hg_ChrX and save result as myGR
+myGR <- unlist(hg_chrX)
+
+# Compare classes of hg_ChrX and myGR
+class(hg_ChrX) # GRangesList
+class(myGR) # GRanges
+```
+
+## Sequence files
+
+two type of sequence files:
+- fastq (standard) : use unique seq identifier
+- fasta
+
+both store DNA or protein sequence
