@@ -3,12 +3,15 @@ title: "Introduction to Bioconductor"
 author: "Eleanor Zhang"
 date: "4/13/2020"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(BiocManager)
 library(BSgenome)
-library(Biostrings)
 library(GenomicRanges)
 ```
 
@@ -19,6 +22,11 @@ rm -rf /Applications/R.app
 sudo rm -rf /Library/Frameworks/R.framework
 sudo rm /usr/local/bin/{R,Rscript}
 
+or in one line:
+sudo rm -Rf /Library/Frameworks/R.framework /Applications/R.app \
+   /usr/local/bin/R /usr/local/bin/Rscript
+
+download latest version of R
 
 ## Intall package and check versions
 
@@ -26,7 +34,23 @@ sudo rm /usr/local/bin/{R,Rscript}
 ```{r}
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install(version = "3.10") # version 3.10 use biomanager
+BiocManager::install(version = "3.11") # version 3.10 use biomanager
+```
+
+check versions of R and BiocManager
+```{r}
+version
+BiocManager::version()
+```
+
+check package version explicitly:
+```{r}
+packageVersion("BiocManager")
+```
+
+Packakges available under Bioconductor
+```{r}
+BiocManager::available()
 ```
 
 install BSgenome package
@@ -44,32 +68,67 @@ S4 is actively used in Bioconductor packages
 compared to S3, which use a generic function. R will interpret this function by its input;
 S4: require formal definition of class (eg. data); a class describe name, slots(methods/fields), and contains (inheritance definition)
 
-check if an object is S4 
+### check S4 
 ```{r}
 isS4()
 str()
 ```
 
-show class of an object, eg. BSgenome; a_genome
+### create a S4 class
 ```{r}
-showClass("BSgenome") # give accesors list
-.S4methods(class = "BSgenome")
+MyEpicProject <- setClass(# Define class name with UpperCamelCase
+                          "MyEpicProject",
+                          # Define slots, helpful for validation
+                          slots = c(ini = "Date", 
+                                    end = "Date", 
+                                    milestone = "character"),
+                          # Define inheritance; we can reuse slots from MyProject class        
+                          contains = "MyProject") 
+```
 
-class(a_genome) # main class
-is(a_genome) # other classes
-isS4(a_genome) # is it an S4 representation
+### S4 accessors
 
-# Investigate some other accesors
+```{r}
+# show accessors of a particular class 
+.S4methods(class = "GenomeDescription")
+
+# object summary ("show" is one of the accessors)
+show("object_name")
+```
+
+Ex: look at class BSgenome: parent(extends) class is GenomeDescription, subclass is Masked BSgenome, where it inherit from BSgenome
+```{r}
+showClass("BSgenome")
+```
+
+Ex: suppose have an object a_genome from class BSgenome
+```{r}
+# What is a_genome's main class?
+class(a_genome)  # "BSgenome"
+
+# What is a_genome's other classes?
+is(a_genome)  # "BSgenome", "GenomeDescription" (parent class)
+
+# Is a_genome an S4 representation?
+isS4(a_genome)  # TRUE
+
+# other object information
+show(a_genome) 
+
+# other accessors (can be used to look for a_genome info)
+.S4methods(class = "BSgenome") # other available accessor
+# Ex: some other accesors
 organism(a_genome)
 provider(a_genome)
 seqinfo(a_genome)
 ```
-Extends = parent class, Known Subclasses = classes that inherent from it
 
+## Genomic data
 Genome dataset in BSgenome package; these are biostrings-based genome data package
 ```{r}
-# see all availbale genome sequences
-available.genomes()
+library(BSgenome)
+# see all availbale genome sequences in BSgenome package
+available.genomes() # BSgenome.speciesName.provider.version
 
 # install yeast genome
 if (interactive()) {
@@ -79,25 +138,26 @@ if (interactive()) {
 }
 ```
 
-load Yeast genome
+### Example Yeast genome
 ```{r}
 library("BSgenome.Scerevisiae.UCSC.sacCer3")
 yeast <- BSgenome.Scerevisiae.UCSC.sacCer3
-str(yeast)
 
-# chromosome number 
+# use accessors to look at this genome information
+# chromosome number (17 chrs)
 length(yeast)
 # Chromosome names
-seqnames(yeast) 
+names(yeast) 
 # length of each chromosome by DNA pairs
 seqlengths(yeast)
 ```
 
 S4 method for BSgenome object
 ```{r}
-# select chromosome of interest and particular region; eg. first 10 base pairs
+getSeq(yeast) # all genome
+# select chromosome of interest
 getSeq(yeast, "chrM")
-# select first 10 base of each chromosome in the genome; default start = 1
+# select first 10 base of every chromosome in the genome; default start = 1
 getSeq(yeast, end = 10) 
 # Print chromosome M, alias chrM
 yeast$chrM
@@ -105,16 +165,35 @@ yeast$chrM
 nchar(yeast$chrM)
 ```
 
-## Biostring package
+access each chromosome sequence by $
+```{r}
+yeast$chrM
+nchar(yeast$chrM) # count # of characters in sequence
+```
 
-pros: memory efficient to store and manipulate sequence of characters; containers can be inherited
 
+## Biostring package  
+pros: 
+- memory efficient to store and manipulate sequence of characters; 
+- containers can be inherited
+
+### support different class
+```{r}
+showClass("XString")
+showClass("BString")
+showClass("BStringSet")
+```
+
+### Biostring alphabets
+
+DNA, RNA, AA
 ```{r}
 DNA_BASES # DNA 4 bases
 RNA_BASES # RNA 4 bases
 AA_STANDARD # Amino acids
 
-DNA_ALPHABET # IUPAC code map (including symbols)
+# all alphabets including special symbols 
+DNA_ALPHABET # IUPAC code map
 RNA_ALPHABET # IUPAC code map
 AA_ALPHABET # IUPAC amino acid code
 ```
@@ -123,47 +202,69 @@ AA_ALPHABET # IUPAC amino acid code
 
 transcribe DNA to RNA
 ```{r}
-dna_seq <- DNAString("ATGATCTCGTAA")
-RNAString(dna_seq) 
+dna_seq <- DNAString("ATGATCTCGTAA") # DNAString is a class
+RNAString(dna_seq) # can transribe a set of DNA
 ```
 
 translate RNA to AA
 ```{r}
 RNA_GENETIC_CODE
 translate(RNAString(dna_seq))
+```
 
-# shortcut DNA --> AA
-translate(dna_seq) # same result as above
+shortcut DNA --> AA
+```{r}
+aa_seq <- translate(dna_seq) # same result as above
+```
+
+### download zika from NCBI?
+
+```{r}
+BiocManager::install("genomes")
+library("genomes")
+available.genomes()
 ```
 
 ### check alphabet
+
 ```{r}
+# read zika fasta file
 library(Biostrings)
-yeast_chrI <- getSeq(yeast, "chrI")
+zika <- readDNAStringSet("Data/zika.fna")
 
 # check alphabet
-alphabet(yeast_chrI)
+alphabet(zika)
 
-# Check the alphabet Frequency 
-alphabetFrequency(yeast_chrI)
+# Check the alphabet Frequency (inlcude all AA and nucleotide)
+alphabetFrequency(zika)
 
 # Check alphabet of the zikaVirus using baseOnly = TRUE
-alphabet(yeast_chrI, baseOnly = TRUE) # alphabet of bases (we can know if it's DNA string or RNA string)
+alphabet(zika, baseOnly = TRUE) # alphabet of bases (we can know if it's DNA string or RNA string)
+alphabetFrequency(zika, baseOnly = TRUE) # this is a DNA sequence
 
 # check container class 
-str(yeast_chrI) # DNAString
+str(zika) # DNAString
 ```
 
-subset a sequence using subseq()
+subset part of a sequence
 ```{r}
-# Unlist the set, select the first 21 letters, and assign to dna_seq
-dna_seq <- subseq(unlist(yeast_chrI), end = 21)
+# Unlist the set, select the first 21 bases, and assign to dna_seq
+dna_seq <- subseq(unlist(zika), end = 21)
 dna_seq
+# turn dna_seq (coding strand) into an RNAString object and print it
+rna_seq <- RNAString(dna_seq) 
+rna_seq
+# Translate rna_seq into an AAString object and print it
+aa_seq <- translate(rna_seq)
+aa_seq
+# Translate dna_seq into an AAString object in one step
+aa_seq <- translate(dna_seq)
+aa_seq
 ```
 
 ## Sequencing handling
 
-single sequence vs. a set of sequence
+single sequence vs. a set of sequence:
 each XString store a single sequence 
 1. BString for string
 2. DNAString for DNA
@@ -176,47 +277,52 @@ sets of sequence (with varying lengths)
 3. RNAStringSet for RNA
 4. AAStringSet for amino acids
 
-### create stringSet and collate it
+### create DNAStringSet and collate it
 
 ```{r}
-# read a DNA seq string 
-readDNAStringSet("data/zika.fa") # only one seq
+# read a DNA seq from fasta file (can remove fasta header)
+zika <- readDNAStringSet("Data/zika.fna") # this create DNAStringSet
 
-length(yeast_chrI) # take a DNA sequence from yeast whole genome; length = #base pairs
+length(zika) # one single sequence
+width(zika) # number of bases pairs (length of sequence)
 
-# use unlist to collate a sequence if length = 1 and width = # base length
-unlist()
+# unlist the sequence into DNAStrings
+zika_seq <- unlist(zika)
+length(zika_seq) # 10794 bps
+str(zika_seq) # class is DNAString
 ```
 
-### create a set of subset of stringSet
+### create a set of DNAStrings
 
 three subsets from a single sequence
 ```{r}
-yeast_set <- DNAStringSet(yeast_chrI,
+zika_set <- DNAStringSet(zika_seq,
                           start = c(1, 101, 201),
                           end = c(100, 200, 300))
-yeast_set # each seq is stored in the column
-length(yeast_set) # 3 sequence = # cols
-width(yeast_set) # 3 equal length sequence 
+zika_set # each seq is stored in the column
+length(zika_set) # 3 sequence
+width(zika_set) # each sequence has length 100 
 ```
 
 ### complement sequence
-
 ```{r}
 a_seq <- DNAString("ATGATCTCGTAA")
 a_seq
 complement(a_seq)
 ```
 
-rev() a sequence will reverse the sequence order (useful when building a reference genome)
+### reverse a seq or a seq set
+rev() (useful when building a reference genome)
 ```{r}
-yeast_set # 1 2 3
-rev(yeast_set) # 3 2 1
+a_seq
+rev(a_seq) # reverse a DNAString (head to tail)
+rev(zika_set) # reverse a DNSStringSet will change the sequence listed order
 ```
 
-reverse() a sequence: reverse from right to left and reverse the order of sequences
+reverse() a sequence: reverse from right to left for either a set of seqs or a seq
 ```{r}
-reverse(yeast_set)
+reverse(zika_set)
+reverse(zika_seq)
 ```
 
 reverse complement (for both DNA and RNA seq)
@@ -241,31 +347,45 @@ matchPattern(pattern = "", subject = , max.mismatch = )
 vmatchPattern() # output matching result for each seq in the set
 ```
 
+Example:
+```{r}
+# For Sets
+vmatchPattern(pattern = "ACATGGGCCTACCATGGGAG", 
+              subject = zika_set, max.mismatch = 1)
+# For single sequences
+matchPattern(pattern = "ACATGGGCCTACCATGGGAG", 
+              subject = zika_seq, max.mismatch = 1)
+```
+
+
 ### palendromes
 example: palendromes (read forward and backward are the same)
 ```{r}
-findPalindromes() # find palendromes in single seq (only work for single seq)
+findPalindromes(zika_seq) # find palendromes in single seq (only work for single seq)
 ```
 
-translation has 6 reading frames 
-3 positive 3 negative
+translation has 6 reading frames  (from 5' to 3')
+3 positive 3 negative (negatives are reverse complement of positive strand)
 
 ### find and count matched pattern
 
+this zika genome is a positive strand (coding strand)
 find matched pattern of NS5 conserved region in 6 possible reading frame
+
 ```{r}
-# print the rnaframesZikaSet (6 possible reading frame of zika RNA)
-rnaframesZikaSet
+# obtain 6 reading frame (DNA) of zika sequence
+zika_readingframe <- DNAStringSet(zika_seq, start = c(1,2,3), end = c(length(zika_seq)))
+zika_readingframe_rv <- reverseComplement(zika_readingframe)
+zika_rf6 <- union(zika_readingframe, zika_readingframe_rv)
 
-# translate all 6 reading frames 
-AAzika6F <- translate(rnaframesZikaSet)
-AAzika6F
+zika_aa_rf6 <- translate(zika_rf6)
+NS5_aa <- unlist(readAAStringSet("Data/NS5_protein.fasta"))
 
-# Count the matches allowing 15 mistmatches
-index <- vcountPattern(pattern = NS5, subject = AAzika6F, max.mismatch = 15)
+# Count the matches allowing 15 mistmatches (the second reading frame has match)
+index <- vcountPattern(pattern = NS5_aa, subject = zika_aa_rf6, max.mismatch = 15)
 
 # Select the frame that contains the match
-selectedSet <- AAzika6F[index]  # c(0,0,1,0,0,0)
+selectedSet <- zika_aa_rf6[2] 
 
 #Convert this frame into a single sequence
 selectedSeq <- unlist(selectedSet)
@@ -273,7 +393,11 @@ selectedSeq <- unlist(selectedSet)
 
 explore how this sequence is matched with the pattern
 ```{r}
-matchPattern(pattern = "", subject = , max.mismatch = )
+# Use vmatchPattern() with the set
+vmatchPattern(pattern = NS5_aa, subject = selectedSet, max.mismatch = 15)
+
+# Use matchPattern() with the single sequence
+matchPattern(NS5_aa, selectedSeq, max.mismatch = 15)
 ```
 
 ## IRanges package and genomics structure
@@ -283,7 +407,7 @@ Hierarchical data structures that can contain metadata
 library(IRanges)
 ```
 
-IRanges can be specified by numeric (exact positions) or logical vector (you can fill in conditions)
+IRanges can be specified by numeric (exact positions using three parameters) or logical vector (you can fill in conditions; only specify "start")
 
 Different ways to specify ranges; width = end-start+1
 ```{r}
@@ -307,12 +431,12 @@ Use Rle to specify Run length enconding
 some_numbers <- c(3, 2, 2, 2, 3, 3, 4, 2)
 some_numbers
 
-Rle(some_numbers)
+Rle(some_numbers) # sparse coding
 
 # logical
 gi <- c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
 myRle <- Rle(gi)
-IRanges(start = myRle)
+IRanges(start = myRle) # only start can take logical Rle vectors (no need to specify other parameters)
 ```
 
 More examples
@@ -344,24 +468,25 @@ seq_2 <- IRanges(start = c(5, 35, 50),
 width(seq_1) # 28
 width(seq_2) 
 
-# Check the width of seq_1 and seq_2
+# Check the width of seq_1 and seq_2 (same as above)
 lengths(seq_1) # 28
 lengths(seq_2)
 ```
 
-## Genomics Ranges
+## Gen of interest
 
+GRanges is a class that save genomic intervals by chromosome
 ```{r}
 library(GenomicRanges)
 ```
 
-specify genomics intervals by chromosome: chromosome number and range on that chr
+GRanges require specifying chromosome number, range and strand
 ```{r}
 myGR <- GRanges("chr1:200-300")
 myGR # provide metadata such as seqnames and seqinfo
 ```
 
-transform df to GRranges
+transform a df (containing metadata of genomics data) to GRranges
 ```{r}
 myGR <- as(df, "GRanges")
 ```
@@ -382,19 +507,31 @@ seqinfo(gr)
 genome(gr)
 ```
 
-### explore chrX
+### explore chrX and ABCD1 gene
 
 ```{r}
 BiocManager::install("TxDb.Hsapiens.UCSC.hg38.knownGene")
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-hg <- TxDb.Hsapiens.UCSC.hg38.knownGene
+hg <- TxDb.Hsapiens.UCSC.hg38.knownGene # TxDb is transcript database
 str(hg) # class of TxDb
 ```
 
-select genes from chrX, this returns a GRanges object
+Extract all genes on chrX --> returns a GRanges object
 ```{r}
 hg_chrXg <- genes(hg, filter = list(tx_chrom = c("chrX")))
-hg_chrXg
+str(hg_chrXg)
+head(hg_chrXg)
+
+# used for chromosome names 
+seqnames(hg_chrXg)
+# returns an IRanges object for ranges
+ranges(hg_chrXg)
+# metadata columns (gene_id)
+mcols(hg_chrXg)
+# generic function to store sequence information
+seqinfo(hg_chrXg)
+# stores the genome name
+genome(hg_chrXg)
 ```
 
 transform df to GRanges object
@@ -409,43 +546,52 @@ Extract genes with filtering conditions
 # extract all genes on chrX
 hg_chrXg <- genes(hg, filter = list(tx_chrom = c("chrX")))
 
-# Extract all positive stranded genes in chromosome X, assign to hg_chrXgp, then sort it
+# Extract all positive stranded genes on chromosome X, assign to hg_chrXgp
 hg_chrXgp <- genes(hg, filter = list(tx_chrom = c("chrX"), tx_strand = "+"))
+sort(hg_chrXgp) # order by ranges
 ```
 
 ### GRangesList
 a container storing a collection of GRanges efficiently
-
 create a GRangesList
 ```{r}
 as(mylist, "GRangesList")
+GRangesList(GRange1, Grange2, ...)
 unlist(myGRangesList) # convert back
 
 # accessors of GRangesList
 methods(class = "GRangesList")
 ```
 
-use it to break regions into smaller regions
+break each gene on chromosome X into smaller pieces (width = 20000 bp, increment by 10000 bp)
 ```{r}
-hg_chrXg # 1067 known genes
-slidingWindows(hg_chrXg, 
+slidingWindows(sort(hg_chrXg), # need to sort first
                width = 20000, # total # letters for each new range
                step = 10000) # distance btw ranges, eg [1, 20000], [10000, 30000]
 # this returns a GRangesList (each gene has been divided into pieces with 20000 bp)
+
+# If need exactly 2 windows ?? (not sure)
+slidingWindows(sort(hg_chrXg), # need to sort first
+               width = 20000, # total # letters for each new range
+               step = 1L) 
 ```
 
 ### Genomics features and TxDb (transcript database)
 
 ```{r}
 library(GenomicFeatures) # use TxDb objects to store metadata
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+hg <- TxDb.Hsapiens.UCSC.hg38.knownGene # a TxDb object
 ```
 
-extract info from TxDb objects, use these extracting functions
+extract info from TxDb objects, use these extracting functions: 
+syntax is function(hg, columns = c("select column names"), filter = list("condition"))
 - transcripts()
 - exons
 - genes
 - cds()
 - promoters()
+
 ```{r}
 # prefilter results to ChrX (only this chromosome is active)
 seqlevels(hg) <- c("chrX")
@@ -456,14 +602,14 @@ transcripts(hg, columns = c("tx_id", "tx_name"), filter = NULL)
 # exons
 exons(hg, columns = c("tx_id", "exon_id"), filter = list(tx_id = "179161"))
 
-# retrieve exons by transcripts 
+# retrieve exons by transcripts (a list by transcripts)
 exonsBytx <- exonsBy(hg, by = "tx")  #  exons by transcript
 
-# retrieve by transcript id
-abcd1_219480 <- exonsBytx[["219480"]]  #  transcript id
+# retrieve exons from a transcript id (5 exons)
+trx_219480 <- exonsBytx[["219480"]]  #  transcript id
 
 # width of each exon
-width(abcd1_219480) 
+width(trx_219480) 
 ```
 
 find Overlaps (either complete or partial)
@@ -480,13 +626,17 @@ subsetByOverlaps(query, subject)
 
 find if ABCD1 gene has overlap with chrX, ABCD1 is a GRanges object
 ```{r}
-overlapsAny(ABCD1, hg_chrX)
+# there must be an overlap since ABCD1 gene is part of the chrX
+ABCD1 <- genes(hg,columns = c("tx_id", "gene_id"), filter = list(gene_id = "215"))
+ranges(ABCD1)
+# find if there is match
+overlapsAny(ABCD1, hg_chrXg)
 ```
 
 find where gene id and its location at overlap with ABCD1
 ```{r}
 # Store the overlapping range in rangefound
-rangefound <- subsetByOverlaps(hg_chrX, ABCD1)
+rangefound <- subsetByOverlaps(hg_chrXg, ABCD1)
 
 # Check names of rangefound
 names(rangefound)
@@ -498,7 +648,7 @@ ABCD1
 rangefound
 ```
 
-Find # of transcript each gene has
+### Find # of transcript each gene has
 ```{r}
 # Prefilter chromosome X "chrX" using seqlevels()
 seqlevels(hg) <- c("chrX")
@@ -507,27 +657,325 @@ seqlevels(hg) <- c("chrX")
 hg_chrXt <- transcriptsBy(hg, by = "gene")
 hg_chrXt
 
-# Select gene `215` from the transcripts
+# Select gene `215` from the transcripts (it has 3 transcripts)
 hg_chrXt$`215`
 ```
 
 convert GRangesList object into Granges object
 after conversion, length of GRanges object >= GRangeList
 ```{r}
-# Unlist hg_ChrX and save result as myGR
-myGR <- unlist(hg_chrX)
+# Unlist hg_Chrt and save result as myGR
+myGR <- unlist(hg_chrXt)
 
 # Compare classes of hg_ChrX and myGR
-class(hg_ChrX) # GRangesList
+class(hg_chrXt) # GRangesList
 class(myGR) # GRanges
+
+length(hg_chrXt)
+length(myGR)
 ```
 
 ## Sequence files
 
 two type of sequence files:
-- fastq (standard) : use unique seq identifier
-- fasta
+1. fastq (standard, .fastq or .fq) : use unique seq identifier and quality encoding per sequence letter
+four components:
+- @: unique sequence identifier
+- raw sequence string
+- + optional id
+- quality encoding score (one letter) for this sequence
+
+2. fasta (.fasta; .fa; .seq): two components
+- > unique sequence identifier
+- raw seuquence string
 
 both store DNA or protein sequence
 
-test on this file
+### ShortRead Package
+
+The class of ShorRead stores and manipulate uniform length short read sequences and their identifiers
+```{r}
+BiocManager::install("ShortRead")
+library(ShortRead)
+```
+
+1. Read fasta file (compressed or uncompressed files) 
+```{r}
+# read a single fasta file
+fas_single <- readFasta(dirPath = "Data/ABCD1.fasta")
+# read all fasta files in a folder (each file must start with >)
+fas_set <- readFasta(dirPath = "Data", pattern = "fasta")
+fas_single # a ShortRead object
+```
+
+other methods
+```{r}
+methods(class = "ShortRead")
+```
+
+write a ShortRead object to a fasta file (can also compresss on the fly)
+```{r}
+writeFasta(fasample, file = "data/sample.fasta")
+```
+
+2. Read fastq file
+
+this create a ShortReadQ class object
+can also specify qualityType and filter
+```{r}
+# read a single fasta file
+fasq_single <- readFastq(dirPath = "Data/SP1.fq")
+# read all fasta files in a folder (each file must start with >)
+fas_set <- readFastq(dirPath = "Data", pattern = "fastq")
+fas_single # a ShortReadQ object
+
+methods(class = "ShortReadQ")
+
+# Write a ShortRead object
+writeFastq(fqsample, file = "data/sample.fastq.gz")
+```
+
+a collection of fastq sample
+```{r}
+# set the seed to draw the same read sequences every time
+set.seed(123)
+# Subsample of 50 reads out of 250
+sampler <- FastqSampler(con = "data/SP1.fq", n = 50)
+# save the yield of 3 read sequences
+sample_small <- yield(sampler)
+# Class ShortReadQ
+class(sample_small)
+# Check class sread fqsample
+class(sread(sample_small))
+
+# 8 sequences each with a subset of 50 reads, each with 31 bps
+length(sample_small)
+width(sample_small)
+
+# Check id of fqsample
+id(sample_small)
+```
+
+### Quality scores (Phred table)
+
+quality scores is about error probability; >30 are good quality (above 99.9% accurate)
+
+look at encoding and score of each base on a read; usually see score 2-40, but higher score is possible. Different sequencing platform may use different scoring system.
+```{r}
+# quality encoding (by ASCII character): this is important to check!
+encoding(quality(sample_small)) # Illumina encoding
+
+# obtain quality score of the subsample of reads (Phred score coded)
+quality(sample_small)
+```
+
+check quality of bases on each read: each base read recieve a quality score
+```{r}
+# print the first read sequence
+sread(sample_small)[1]
+# quality score of this read
+quality(sample_small)[1]
+
+## transform phred score into numerical values in two steps
+# 1. create PhredQuality instance
+pq <- PhredQuality(quality(sample_small))
+# 2. transform encoding into scores 
+qs <- as(pq, "IntegerList")
+qs # print scores (each base has score)
+```
+
+quality assessment summary
+```{r}
+# Quality assessment (can also read directly from directory)
+qaSummary <- qa(sample_small, type = "fastq", lane = 1)    # optional lane
+names(qaSummary)
+class(qaSummary) # class of ShortReadQQA
+# QA elements are accessed with qa[["name"]]
+qaSummary[["baseCalls"]]
+qaSummary[["baseQuality"]] # distribution of base quality
+
+# Get a HTML report
+browseURL(report(qaSummary))
+```
+
+ALphabet by cycle
+look at nucleotide frequency per cycle (read sequence)
+```{r}
+# check sequence alphabet
+alphabet(sread(fasq_single))
+# get all alphabet frequence in each read/cycle
+abc <- alphabetByCycle(sread(fasq_single))
+# each observation is a letter and each variable is a cycle
+# first, select the four first rows nucleotides A, C, G, T 
+# then, transpose
+nucByCycle <- t(abc[1:4,])
+# convert to tibble
+nucByCycle <- nucByCycle %>% 
+  as.tibble() %>% # convert to tibble
+  mutate(cycle = 1:nrow(nucByCycle)) # add cycle numbers
+
+nucByCycle
+
+# Create a line plot of cycle vs count
+nucByCycle %>% 
+  # Gather the nucleotide letters in alphabet and get a new count column
+  gather(key = alphabet, value = count , -cycle) %>% 
+  ggplot(aes(x = cycle, y =  count, color = alphabet)) +
+  geom_line(size = 0.5 ) +
+  labs(y = "Frequency") +
+  theme_bw() +
+  theme(panel.grid.major.x = element_blank())
+```
+
+## Match and Filter
+
+### Duplicates
+
+Duplicate sequences are caused by:
+- biological nature 
+- PCR amplification errors
+- Sequencing the sample more than once (~30%-70% reads are identitcal)
+
+We better remove duplicates or at least mark them for WGS or WES
+
+Mark duplication with threshold for RNA-seq and Chip-seq data
+
+```{r}
+# Counting duplicates TRUE is the number of duplicates
+table(srduplicated(fasq_single)) # 10 duplicates
+
+# Cleaning reads from duplicates x[fun(x)]
+cleanReads <- fasq_single[srduplicated(fasq_single) == FALSE]
+
+# check again (no dup)
+table(srduplicated(cleanReads))
+sread(fasq_single)[srduplicated(fasq_single) == FALSE]
+```
+
+### create custom Filter: srFilter
+
+```{r}
+# Use a custom filter to remove reads from fqsample
+# This filter to remove reads shorter than a min number of bases
+readWidthCutOff <- srFilter(function(x) {width(x) >= minWidth}, 
+                            name = "MinWidth")
+minWidth <- 30 
+fasq_single[readWidthCutOff(fasq_single)] # filter reads >= 30 bps
+```
+
+filter function in the package
+Ex1: filter by maximum bps on each read
+```{r}
+# save your filter, .name is optional
+myFilter <- nFilter(threshold = 10, .name = "cleanNFilter") # set a maximum N on each read
+
+# use the filter at reading point    
+filtered <- readFastq(dirPath = "Data", 
+                      pattern = ".fq",
+                      filter = myFilter)
+```
+
+Ex2: filter by id
+```{r}
+#id filter example
+myFilterID <- idFilter(regex = ":3:1")
+# will return only those ids that contain the regular expression
+# optional parameters are .name, fixed and exclude
+
+# use the filter at reading point    
+filtered <- readFastq(dirPath = "Data", pattern = ".fq",
+                       filter = myFilterID)
+```
+
+Ex3: find Poly-A regions
+```{r}
+# filter to remove poly-A regions (select reads with less than 10 base A)
+myFilterPolyA <- polynFilter(threshold = 10, nuc = c("A"))
+# will return the sequences that have a maximun number of 10 consecutive A's
+
+# use the filter for subsetting    
+filtered[myFilterPolyA(filtered)]
+```
+
+Ex4: select reads start with "ATCGA"
+```{r}
+myStartFilter <- srFilter(function(x) substr(sread(x), 1, 5) == "ATGCA")
+# Filter reads into selectedReads using myStartFilter
+selectedReads <- fasq_single[myStartFilter(fasq_single)]
+# Check class of selectedReads
+class(selectedReads)
+# Check detail of selectedReads
+detail(selectedReads)
+```
+
+## Multiple Assessment: Rqc Package
+
+Rqc can give summary report of all sequence file at once
+use parallel processing
+
+```{r}
+BiocManager::install("Rqc")
+library(Rqc)
+
+files <- # get the full path of the files you want to assess (compressed/uncompressed)
+qaRqc <- rqcQA(files) # return a list fo each file along with its summary report
+
+# exploring qaRqc
+class(qaRqc) # "list"
+names(qaRqc) # name of the input files
+
+# for each file
+qaRqc[1]
+# the class of the results is RqcResultSet
+```
+
+save only summary report without files
+```{r}
+# get the path of the files you want to assess
+files <- "data/seq1.fq" "data/seq2.fq" "data/seq3.fq" "data/se4.fq"
+# use parallel computing with 4 cores
+qaRqc <- rqcQA(files, workers = 4)) 
+```
+
+take a subset of each file (single-end method)
+```{r}
+# sample of sequences
+set.seed(1111)
+
+qaRqc_sample <- rqcQA(files, workers = 4, sample = TRUE, n = 500))
+```
+
+for pair-end files
+```{r}
+# paired-end files
+pfiles <- "data/seq_11.fq" "data/seq1_2.fq" "data/seq2_1.fq" "data/seq2_2.fq"
+
+qaRqc_paired <- rqcQA(pfiles, workers = 4, pair = c(1, 1, 2, 2)))
+```
+
+### racReport and raqResultSet
+```{r}
+# create a report
+reportFile <- rqcReport(qaRqc, templateFile = "myReport.Rmd")
+browseURL(reportFile)
+#The class of qaRqc is rqcResultSet
+methods(class = "RqcResultSet")
+```
+
+Ex
+```{r}
+qaRqc <- rqcQA(files, workers = 4)) 
+perFileInformation(qaRqc)
+```
+
+Ex
+```{r}
+# Average per cycle quality plot
+rqcCycleAverageQualityPlot(qa)
+
+# Average per cycle quality plot with white background
+rqcCycleAverageQualityPlot(qa) + theme_minimal()
+# Read quality plot with white background
+rqcReadQualityPlot(qa) + theme_minimal()
+```
+
